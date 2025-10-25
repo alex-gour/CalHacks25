@@ -1,489 +1,543 @@
-import { Interactable } from "../../SpectaclesInteractionKit/Components/Interaction/Interactable/Interactable";
-import { InteractorEvent } from "../../SpectaclesInteractionKit/Core/Interactor/InteractorEvent";
-import { SIK } from "../../SpectaclesInteractionKit/SIK";
-import { TextToSpeechOpenAI } from "./TextToSpeechOpenAI";
-import { HttpClient, HttpFetchModule } from "./utils/HttpClient";
+/** @format */
+
+import {Interactable} from '../../SpectaclesInteractionKit/Components/Interaction/Interactable/Interactable'
+import {InteractorEvent} from '../../SpectaclesInteractionKit/Core/Interactor/InteractorEvent'
+import {SIK} from '../../SpectaclesInteractionKit/SIK'
+import {TextToSpeechOpenAI} from './TextToSpeechOpenAI'
+import {HttpClient, HttpFetchModule} from './utils/HttpClient'
 
 // Add location module requirement
-require('LensStudio:RawLocationModule');
+try {
+	require('LensStudio:RawLocationModule')
+} catch (error) {
+	print('Warning: RawLocationModule not available: ' + error)
+}
 
 @component
 export class VisionOpenAI extends BaseScriptComponent {
-  @input textInput: Text;
-  @input textOutput: Text;
-  @input image: Image;
-  @input interactable: Interactable;
-  @input ttsComponent: TextToSpeechOpenAI;
-  @input LLM_analyse: Text;
-  
-  // Chat history display
-  @input chatHistoryText: Text; // Reference to popup1 text element
-  @input maxHistoryLength: number = 10; // Maximum number of conversation pairs to store
-  
-  // Claude summary
-  @input enableSummary: boolean = true; // Option to enable/disable summaries
-  
-  // Maximum characters per line for proper text wrapping
-  @input maxCharsPerLine: number = 100;
+	@input textInput: Text
+	@input textOutput: Text
+	@input image: Image
+	@input interactable: Interactable
+	@input ttsComponent: TextToSpeechOpenAI
+	@input LLM_analyse: Text
 
-  // Location properties
-  latitude: number;
-  longitude: number;
-  private locationService: LocationService;
-  private updateLocationEvent: DelayedCallbackEvent;
-  
-  // Chat history storage
-  private chatHistory: string[] = [];
+	// Chat history display
+	@input chatHistoryText: Text // Reference to popup1 text element
+	@input maxHistoryLength: number = 10 // Maximum number of conversation pairs to store
 
-  @input("string")
-  backendBaseUrl: string = "";
+	// Claude summary
+	@input enableSummary: boolean = true // Option to enable/disable summaries
 
-  internetModule?: HttpFetchModule;
+	// Maximum characters per line for proper text wrapping
+	@input maxCharsPerLine: number = 100
 
-  private httpClient = new HttpClient();
+	// Location properties
+	latitude: number
+	longitude: number
+	private locationService: LocationService
+	private updateLocationEvent: DelayedCallbackEvent
 
-  private isProcessing: boolean = false;
+	// Chat history storage
+	private chatHistory: string[] = []
 
-  onAwake() {
-    this.createEvent("OnStartEvent").bind(() => {
-      this.onStart();
-    });
+	@input('string')
+	backendBaseUrl: string = 'http://localhost:8000'
 
-    // Initialize location update event
-    this.updateLocationEvent = this.createEvent('DelayedCallbackEvent');
-    this.updateLocationEvent.bind(() => {
-      this.updateLocation();
-    });
-  }
+	internetModule?: HttpFetchModule
 
-  onStart() {
-    let interactionManager = SIK.InteractionManager;
+	private httpClient = new HttpClient()
 
-    // Define the desired callback logic for the relevant Interactable event.
-    let onTriggerEndCallback = (event: InteractorEvent) => {
-      this.handleTriggerEnd(event);
-    };
+	private isProcessing: boolean = false
 
-    this.interactable.onInteractorTriggerEnd(onTriggerEndCallback);
-    
-    if (!this.backendBaseUrl) {
-      print("Backend base URL is not configured. Set backendBaseUrl on the component.");
-    }
+	onAwake() {
+		try {
+			this.createEvent('OnStartEvent').bind(() => {
+				this.onStart()
+			})
 
-    if (this.internetModule) {
-      this.httpClient.setFetcher(this.internetModule);
-    } else {
-      print("Internet Module is missing. Assign it in the Inspector or rely on global fetch fallback.");
-    }
+			// Initialize location update event
+			this.updateLocationEvent = this.createEvent('DelayedCallbackEvent')
+			this.updateLocationEvent.bind(() => {
+				this.updateLocation()
+			})
+		} catch (error) {
+			print('Error in VisionOpenAI onAwake: ' + error)
+		}
+	}
 
-    // Initialize location service
-    this.initLocationService();
-    
-    // Initialize chat history display
-    this.updateChatHistoryDisplay();
-  }
+	onStart() {
+		try {
+			let interactionManager = SIK.InteractionManager
 
-  // Utility function to make text wrap within a textbox
-  makeTextWrappable(text: string): string {
-    if (!text) return "";
-    
-    // Split by existing newlines first
-    const paragraphs = text.split("\n");
-    let result = [];
-    
-    for (const paragraph of paragraphs) {
-      if (paragraph.length <= this.maxCharsPerLine) {
-        result.push(paragraph);
-        continue;
-      }
-      
-      // Break long paragraphs into wrapped lines
-      let remainingText = paragraph;
-      while (remainingText.length > 0) {
-        // If remaining text is shorter than max length, just add it
-        if (remainingText.length <= this.maxCharsPerLine) {
-          result.push(remainingText);
-          break;
-        }
-        
-        // Find the last space within the max line length
-        let cutPoint = remainingText.lastIndexOf(" ", this.maxCharsPerLine);
-        if (cutPoint === -1 || cutPoint === 0) {
-          // No appropriate space found, force cut at max length
-          cutPoint = this.maxCharsPerLine;
-        }
-        
-        result.push(remainingText.substring(0, cutPoint));
-        remainingText = remainingText.substring(cutPoint + 1); // +1 to skip the space
-      }
-    }
-    
-    return result.join("\n");
-  }
-  
-  // Add a new conversation to the chat history
-  addToHistory(userQuery: string, response: string) {
-    // Create a formatted conversation entry
-    const historyEntry = `User: ${userQuery}\nSnapAid: ${response}\n`;
-    
-    // Add to the history array
-    this.chatHistory.push(historyEntry);
-    
-    // If we exceed the maximum history length, remove the oldest entries
-    if (this.chatHistory.length > this.maxHistoryLength) {
-      this.chatHistory = this.chatHistory.slice(this.chatHistory.length - this.maxHistoryLength);
-    }
-    
-    // Update the history display
-    this.updateChatHistoryDisplay();
-  }
-  
-  // Update the chat history display in the popup1 text element
-  updateChatHistoryDisplay() {
-    if (!this.chatHistoryText) {
-      print("Chat history text element not assigned");
-      return;
-    }
-    
-    // Join all history entries and make them wrappable
-    const fullHistory = this.chatHistory.join("\n");
-    this.chatHistoryText.text = this.makeTextWrappable(fullHistory);
-  }
-  
-  // Get the full chat history as a single string (for including in prompts)
-  getChatHistoryString(): string {
-    return this.chatHistory.join("\n");
-  }
-  
-  // Generate summary with Claude API and add to response
-  async generateBulletSummary(responseText: string): Promise<{ fullText: string; summaryOnly: string }> {
-    if (!this.enableSummary) {
-      print("Summary generation disabled");
-      return {
-        fullText: responseText,
-        summaryOnly: "",
-      };
-    }
+			// Define the desired callback logic for the relevant Interactable event.
+			let onTriggerEndCallback = (event: InteractorEvent) => {
+				this.handleTriggerEnd(event)
+			}
 
-    try {
-      print("Generating bullet-point summary with Claude...");
+			if (this.interactable) {
+				this.interactable.onInteractorTriggerEnd(onTriggerEndCallback)
+			} else {
+				print('Warning: Interactable component not assigned')
+			}
 
-      const prompt = `List the key points from this response in 3-5 concise bullet points.\n${responseText}`;
+			if (!this.backendBaseUrl) {
+				print(
+					'Backend base URL is not configured. Set backendBaseUrl on the component.'
+				)
+			}
 
-      if (!this.backendBaseUrl) {
-        print("Cannot summarize because backendBaseUrl is missing");
-        return {
-          fullText: responseText,
-          summaryOnly: "",
-        };
-      }
+			if (this.internetModule) {
+				this.httpClient.setFetcher(this.internetModule)
+			} else {
+				print(
+					'Internet Module is missing. Assign it in the Inspector or rely on global fetch fallback.'
+				)
+			}
 
-      if (this.internetModule) {
-        this.httpClient.setFetcher(this.internetModule);
-      }
+			// Initialize location service
+			this.initLocationService()
 
-      const request = new Request(`${this.backendBaseUrl}/api/summarize`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ summaryPrompt: prompt }),
-      });
+			// Initialize chat history display
+			this.updateChatHistoryDisplay()
+		} catch (error) {
+			print('Error in VisionOpenAI onStart: ' + error)
+		}
+	}
 
-      const response = await this.httpClient.fetch(request);
+	// Utility function to make text wrap within a textbox
+	makeTextWrappable(text: string): string {
+		if (!text) return ''
 
-      if (response.status === 200) {
-        const responseData = await response.json();
-        const summaryText = (responseData && responseData.summary) || "";
+		// Split by existing newlines first
+		const paragraphs = text.split('\n')
+		let result = []
 
-        if (!summaryText) {
-          print("Claude summary response missing summary field");
-          return {
-            fullText: responseText,
-            summaryOnly: "",
-          };
-        }
+		for (const paragraph of paragraphs) {
+			if (paragraph.length <= this.maxCharsPerLine) {
+				result.push(paragraph)
+				continue
+			}
 
-        const normalizedSummary = summaryText
-          .trim()
-          .replace(/\n{3,}/g, "\n\n")
-          .replace(/[•*-] /g, "• ");
+			// Break long paragraphs into wrapped lines
+			let remainingText = paragraph
+			while (remainingText.length > 0) {
+				// If remaining text is shorter than max length, just add it
+				if (remainingText.length <= this.maxCharsPerLine) {
+					result.push(remainingText)
+					break
+				}
 
-        const cleanSummary = "KEY POINTS:\n\n" + normalizedSummary;
+				// Find the last space within the max line length
+				let cutPoint = remainingText.lastIndexOf(' ', this.maxCharsPerLine)
+				if (cutPoint === -1 || cutPoint === 0) {
+					// No appropriate space found, force cut at max length
+					cutPoint = this.maxCharsPerLine
+				}
 
-        return {
-          fullText: `${responseText}\n\n---KEY POINTS---\n${normalizedSummary}`,
-          summaryOnly: cleanSummary,
-        };
-      }
+				result.push(remainingText.substring(0, cutPoint))
+				remainingText = remainingText.substring(cutPoint + 1) // +1 to skip the space
+			}
+		}
 
-      print("Claude summary call failed with status " + response.status);
-      return {
-        fullText: responseText,
-        summaryOnly: "",
-      };
-    } catch (error) {
-      print("Error in generateBulletSummary: " + error);
-      return {
-        fullText: responseText,
-        summaryOnly: "",
-      };
-    }
-  }
+		return result.join('\n')
+	}
 
-  // Initialize location service
-  initLocationService() {
-    try {
-      print("Initializing location service...");
-      this.locationService = GeoLocation.createLocationService();
-      
-      // Try maximum accuracy
-      this.locationService.accuracy = GeoLocationAccuracy.Navigation; // Most accurate
-      
-      // Start location updates immediately
-      this.updateLocationEvent.reset(0.0);
-      print("Location service initialized successfully");
+	// Add a new conversation to the chat history
+	addToHistory(userQuery: string, response: string) {
+		// Create a formatted conversation entry
+		const historyEntry = `User: ${userQuery}\nSnapAid: ${response}\n`
 
-      // Remove invalid permission check
-    } catch (error) {
-      print("Error initializing location service: " + error);
-    }
-  }
-  
-  // Update location periodically
-  updateLocation() {
-    if (!this.locationService) {
-      print("Location service not initialized");
-      return;
-    }
-    
-    //created vision query
-    this.locationService.getCurrentPosition(
-      (geoPosition) => {
-        this.latitude = geoPosition.latitude;
-        this.longitude = geoPosition.longitude;
-        
-        // Enhanced location debugging
-        print(`Location updated - Lat: ${this.latitude.toFixed(6)}, Long: ${this.longitude.toFixed(6)}`);
-        print(`Location source: ${geoPosition.locationSource}`); // Will show if SIMULATED
-        print(`Location timestamp: ${geoPosition.timestamp}`);
-        print(`Location accuracy: ${geoPosition.horizontalAccuracy}m`);
-      },
-      (error) => {
-        print("Error getting location: " + error);
-      }
-    );
-    
-    // Schedule next update in 1 second
-    this.updateLocationEvent.reset(20.0);
-  }
+		// Add to the history array
+		this.chatHistory.push(historyEntry)
 
-  // Method to ping the local endpoint
-  // async pingLocalEndpoint() {
-  //   try {
-  //     print("Pinging ngrok endpoint...");
-      
-  //     const request = new Request(`${this.backendBaseUrl}`,
-  //       {
-  //         method: "GET",
-  //         headers: {
-  //           "Content-Type": "application/json"
-  //         }
-  //       }
-  //     );
-      
-  //     let response = await this.internetModule.fetch(request);
-  //     print("Endpoint ping status: " + response.status);
-      
-  //     if (response.status === 200) {
-  //       let responseData = await response.json();
-  //       print("Endpoint response: " + JSON.stringify(responseData));
-  //     } else {
-  //       print("Endpoint ping failed with status: " + response.status);
-  //     }
-  //   } catch (error) {
-  //     print("Error pinging endpoint: " + error);
-  //   }
-  // }
+		// If we exceed the maximum history length, remove the oldest entries
+		if (this.chatHistory.length > this.maxHistoryLength) {
+			this.chatHistory = this.chatHistory.slice(
+				this.chatHistory.length - this.maxHistoryLength
+			)
+		}
 
-  async handleTriggerEnd(eventData) {
-    if (this.isProcessing) {
-      print("A request is already in progress. Please wait.");
-      return;
-    }
-  
-    if (!this.textInput.text) {
-      print("Text input is missing");
-      return;
-    }
-    
-    // Save the user's query for adding to history later
-    const userQuery = this.textInput.text;
-  
-    try {
-      this.isProcessing = true;
-      
-      // Update UI
-      if (this.LLM_analyse) {
-        const processingMessage = "Hold on, conducting using your surroundings to fetch tailored responses...";
-        this.LLM_analyse.text = this.makeTextWrappable(processingMessage);
-      }
-  
-      let base64Image = "";
-  
-      // Encode image if available
-      if (this.image) {
-        const texture = this.image.mainPass.baseTex;
-        if (texture) {
-          base64Image = await this.encodeTextureToBase64(texture) as string;
-          print("Image encoded to base64 successfully.");
-        } else {
-          print("Texture not found in the image component.");
-        }
-      }
-  
-      // Prepare payload
-      if (!this.backendBaseUrl) {
-        print("Cannot call orchestrator because backendBaseUrl is missing");
-        return;
-      }
+		// Update the history display
+		this.updateChatHistoryDisplay()
+	}
 
-      if (this.internetModule) {
-        this.httpClient.setFetcher(this.internetModule);
-      }
+	// Update the chat history display in the popup1 text element
+	updateChatHistoryDisplay() {
+		if (!this.chatHistoryText) {
+			print('Chat history text element not assigned')
+			return
+		}
 
-      const orchestratePayload = {
-        user_prompt: userQuery,
-        latitude: this.latitude || 0,
-        longitude: this.longitude || 0,
-        image_surroundings: base64Image,
-        chat_history: this.getChatHistoryString() // Include chat history in the request
-      };
-  
-      const fullUrl = `${this.backendBaseUrl}/api/orchestrate`;
-  
-      const request = new Request(
-        fullUrl,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(orchestratePayload),
-        }
-      );
-      print("Posting to URL: " + fullUrl);
-      let response = await this.httpClient.fetch(request);
-      
-      if (response.status === 200) {
-        let responseData;
-        let responseText = "";
-        
-        try {
-          // Parse the JSON response first
-          responseData = await response.json();
-          print("Parsed JSON response successfully");
-          
-          // Get response text from either response property or full object
-          if (responseData && typeof responseData === 'object' && responseData.response !== undefined) {
-            print("Found 'response' property in parsed JSON");
-            responseText = responseData.response;
-          } else {
-            // Use the entire responseData object as the response text
-            print("No 'response' property found, using entire JSON");
-            responseText = typeof responseData === "string" ? responseData : JSON.stringify(responseData);
-          }
-          
-          // Store original response for history
-          const originalResponse = responseText;
-          
-          // Generate summary with Claude if enabled and append to response
-          if (this.enableSummary && responseText) {
-            const result = await this.generateBulletSummary(responseText);
-            
-            // Show ONLY the key points in textOutput with improved rendering
-            if (result.summaryOnly) {
-              // Ensure text is properly formatted for display
-              const displayText = result.summaryOnly;
-              this.textOutput.text = this.makeTextWrappable(displayText);
-              
-              // Debug log
-              print("Setting textOutput with summary, length: " + displayText.length);
-              
-              // Add to history using the summary instead of full response
-              this.addToHistory(userQuery, displayText);
-            } else {
-              // Fallback if summary generation failed
-              this.textOutput.text = this.makeTextWrappable(responseText);
-              
-              // Use original text for history when summary fails
-              this.addToHistory(userQuery, responseText);
-            }
-          } else {
-            // No summary - just show response in textOutput
-            this.textOutput.text = responseText;
-            
-            // Add to history using the original response
-            this.addToHistory(userQuery, responseText);
-          }
-          
-          print("Response from orchestrate: " + responseText);
-          
-        } catch (jsonError) {
-          print("Error parsing JSON: " + jsonError);
-          let errorText = "Error parsing response: " + jsonError;
-          this.textOutput.text = this.makeTextWrappable(errorText);
-        }
+		// Join all history entries and make them wrappable
+		const fullHistory = this.chatHistory.join('\n')
+		this.chatHistoryText.text = this.makeTextWrappable(fullHistory)
+	}
 
-        // Clear analysis field after response is received
-        if (this.LLM_analyse) {
-          this.LLM_analyse.text = "";
-        }
+	// Get the full chat history as a single string (for including in prompts)
+	getChatHistoryString(): string {
+		return this.chatHistory.join('\n')
+	}
 
-        // Optionally, TTS
-        if (this.ttsComponent) {
-          // Use responseText if available, otherwise try to access responseData.response
-          let textToSpeak = "";
-          if (responseData && typeof responseData === 'object' && responseData.response) {
-            textToSpeak = responseData.response;
-          } else if (typeof responseData === 'string') {
-            textToSpeak = responseData;
-          } else {
-            textToSpeak = JSON.stringify(responseData);
-          }
-          this.ttsComponent.generateAndPlaySpeech(textToSpeak);
-        }
-  
-      } else {
-        print("Failure: Orchestrate API call failed with status " + response.status);
-        if (this.LLM_analyse) {
-          const errorText = `❌ Error (HTTP ${response.status})\n\nBackend request failed.`;
-          this.LLM_analyse.text = this.makeTextWrappable(errorText);
-        }
-      }
-  
-    } catch (error) {
-      print("Error in handleTriggerEnd: " + error);
-      if (this.LLM_analyse) {
-        const errorText = `❌ Error\n\n${error}`;
-        this.LLM_analyse.text = this.makeTextWrappable(errorText);
-      }
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-  
+	// Generate summary with Claude API and add to response
+	async generateBulletSummary(
+		responseText: string
+	): Promise<{fullText: string; summaryOnly: string}> {
+		if (!this.enableSummary) {
+			print('Summary generation disabled')
+			return {
+				fullText: responseText,
+				summaryOnly: '',
+			}
+		}
 
-  // More about encodeTextureToBase64: https://platform.openai.com/docs/guides/vision or https://developers.snap.com/api/lens-studio/Classes/OtherClasses#Base64
-  encodeTextureToBase64(texture) {
-    return new Promise((resolve, reject) => {
-      Base64.encodeTextureAsync(
-        texture,
-        resolve,
-        reject,
-        CompressionQuality.LowQuality,
-        EncodingType.Jpg
-      );
-    });
-  }
+		try {
+			print('Generating bullet-point summary with Claude...')
+
+			const prompt = `List the key points from this response in 3-5 concise bullet points.\n${responseText}`
+
+			if (!this.backendBaseUrl) {
+				print('Cannot summarize because backendBaseUrl is missing')
+				return {
+					fullText: responseText,
+					summaryOnly: '',
+				}
+			}
+
+			if (this.internetModule) {
+				this.httpClient.setFetcher(this.internetModule)
+			}
+
+			const request = new Request(`${this.backendBaseUrl}/api/summarize`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({summaryPrompt: prompt}),
+			})
+
+			const response = await this.httpClient.fetch(request)
+
+			if (response.status === 200) {
+				const responseData = await response.json()
+				const summaryText = (responseData && responseData.summary) || ''
+
+				if (!summaryText) {
+					print('Claude summary response missing summary field')
+					return {
+						fullText: responseText,
+						summaryOnly: '',
+					}
+				}
+
+				const normalizedSummary = summaryText
+					.trim()
+					.replace(/\n{3,}/g, '\n\n')
+					.replace(/[•*-] /g, '• ')
+
+				const cleanSummary = 'KEY POINTS:\n\n' + normalizedSummary
+
+				return {
+					fullText: `${responseText}\n\n---KEY POINTS---\n${normalizedSummary}`,
+					summaryOnly: cleanSummary,
+				}
+			}
+
+			print('Claude summary call failed with status ' + response.status)
+			return {
+				fullText: responseText,
+				summaryOnly: '',
+			}
+		} catch (error) {
+			print('Error in generateBulletSummary: ' + error)
+			return {
+				fullText: responseText,
+				summaryOnly: '',
+			}
+		}
+	}
+
+	// Initialize location service
+	initLocationService() {
+		try {
+			print('Initializing location service...')
+
+			// Check if GeoLocation is available
+			if (typeof GeoLocation === 'undefined') {
+				print('Warning: GeoLocation module not available')
+				return
+			}
+
+			this.locationService = GeoLocation.createLocationService()
+
+			// Try maximum accuracy
+			this.locationService.accuracy = GeoLocationAccuracy.Navigation // Most accurate
+
+			// Start location updates immediately
+			this.updateLocationEvent.reset(0.0)
+			print('Location service initialized successfully')
+
+			// Remove invalid permission check
+		} catch (error) {
+			print('Error initializing location service: ' + error)
+		}
+	}
+
+	// Update location periodically
+	updateLocation() {
+		if (!this.locationService) {
+			print('Location service not initialized')
+			return
+		}
+
+		//created vision query
+		this.locationService.getCurrentPosition(
+			(geoPosition) => {
+				this.latitude = geoPosition.latitude
+				this.longitude = geoPosition.longitude
+
+				// Enhanced location debugging
+				print(
+					`Location updated - Lat: ${this.latitude.toFixed(
+						6
+					)}, Long: ${this.longitude.toFixed(6)}`
+				)
+				print(`Location source: ${geoPosition.locationSource}`) // Will show if SIMULATED
+				print(`Location timestamp: ${geoPosition.timestamp}`)
+				print(`Location accuracy: ${geoPosition.horizontalAccuracy}m`)
+			},
+			(error) => {
+				print('Error getting location: ' + error)
+			}
+		)
+
+		// Schedule next update in 1 second
+		this.updateLocationEvent.reset(20.0)
+	}
+
+	// Method to ping the local endpoint
+	// async pingLocalEndpoint() {
+	//   try {
+	//     print("Pinging ngrok endpoint...");
+
+	//     const request = new Request(`${this.backendBaseUrl}`,
+	//       {
+	//         method: "GET",
+	//         headers: {
+	//           "Content-Type": "application/json"
+	//         }
+	//       }
+	//     );
+
+	//     let response = await this.internetModule.fetch(request);
+	//     print("Endpoint ping status: " + response.status);
+
+	//     if (response.status === 200) {
+	//       let responseData = await response.json();
+	//       print("Endpoint response: " + JSON.stringify(responseData));
+	//     } else {
+	//       print("Endpoint ping failed with status: " + response.status);
+	//     }
+	//   } catch (error) {
+	//     print("Error pinging endpoint: " + error);
+	//   }
+	// }
+
+	async handleTriggerEnd(eventData) {
+		if (this.isProcessing) {
+			print('A request is already in progress. Please wait.')
+			return
+		}
+
+		if (!this.textInput || !this.textInput.text) {
+			print('Text input is missing or not assigned')
+			return
+		}
+
+		// Save the user's query for adding to history later
+		const userQuery = this.textInput.text
+
+		try {
+			this.isProcessing = true
+
+			// Update UI
+			if (this.LLM_analyse) {
+				const processingMessage =
+					'Hold on, conducting using your surroundings to fetch tailored responses...'
+				this.LLM_analyse.text = this.makeTextWrappable(processingMessage)
+			}
+
+			let base64Image = ''
+
+			// Encode image if available
+			if (this.image) {
+				const texture = this.image.mainPass.baseTex
+				if (texture) {
+					base64Image = (await this.encodeTextureToBase64(texture)) as string
+					print('Image encoded to base64 successfully.')
+				} else {
+					print('Texture not found in the image component.')
+				}
+			}
+
+			// Prepare payload
+			if (!this.backendBaseUrl) {
+				print('Cannot call orchestrator because backendBaseUrl is missing')
+				return
+			}
+
+			if (this.internetModule) {
+				this.httpClient.setFetcher(this.internetModule)
+			}
+
+			const orchestratePayload = {
+				user_prompt: userQuery,
+				latitude: this.latitude || 0,
+				longitude: this.longitude || 0,
+				image_surroundings: base64Image,
+				chat_history: this.getChatHistoryString(), // Include chat history in the request
+			}
+
+			const fullUrl = `${this.backendBaseUrl}/api/orchestrate`
+
+			const request = new Request(fullUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(orchestratePayload),
+			})
+			print('Posting to URL: ' + fullUrl)
+			let response = await this.httpClient.fetch(request)
+
+			if (response.status === 200) {
+				let responseData
+				let responseText = ''
+
+				try {
+					// Parse the JSON response first
+					responseData = await response.json()
+					print('Parsed JSON response successfully')
+
+					// Get response text from either response property or full object
+					if (
+						responseData &&
+						typeof responseData === 'object' &&
+						responseData.response !== undefined
+					) {
+						print("Found 'response' property in parsed JSON")
+						responseText = responseData.response
+					} else {
+						// Use the entire responseData object as the response text
+						print("No 'response' property found, using entire JSON")
+						responseText =
+							typeof responseData === 'string'
+								? responseData
+								: JSON.stringify(responseData)
+					}
+
+					// Store original response for history
+					const originalResponse = responseText
+
+					// Generate summary with Claude if enabled and append to response
+					if (this.enableSummary && responseText) {
+						const result = await this.generateBulletSummary(responseText)
+
+						// Show ONLY the key points in textOutput with improved rendering
+						if (result.summaryOnly) {
+							// Ensure text is properly formatted for display
+							const displayText = result.summaryOnly
+							if (this.textOutput) {
+								this.textOutput.text = this.makeTextWrappable(displayText)
+							}
+
+							// Debug log
+							print(
+								'Setting textOutput with summary, length: ' + displayText.length
+							)
+
+							// Add to history using the summary instead of full response
+							this.addToHistory(userQuery, displayText)
+						} else {
+							// Fallback if summary generation failed
+							if (this.textOutput) {
+								this.textOutput.text = this.makeTextWrappable(responseText)
+							}
+
+							// Use original text for history when summary fails
+							this.addToHistory(userQuery, responseText)
+						}
+					} else {
+						// No summary - just show response in textOutput
+						if (this.textOutput) {
+							this.textOutput.text = responseText
+						}
+
+						// Add to history using the original response
+						this.addToHistory(userQuery, responseText)
+					}
+
+					print('Response from orchestrate: ' + responseText)
+				} catch (jsonError) {
+					print('Error parsing JSON: ' + jsonError)
+					let errorText = 'Error parsing response: ' + jsonError
+					if (this.textOutput) {
+						this.textOutput.text = this.makeTextWrappable(errorText)
+					}
+				}
+
+				// Clear analysis field after response is received
+				if (this.LLM_analyse) {
+					this.LLM_analyse.text = ''
+				}
+
+				// Optionally, TTS
+				if (this.ttsComponent) {
+					// Use responseText if available, otherwise try to access responseData.response
+					let textToSpeak = ''
+					if (
+						responseData &&
+						typeof responseData === 'object' &&
+						responseData.response
+					) {
+						textToSpeak = responseData.response
+					} else if (typeof responseData === 'string') {
+						textToSpeak = responseData
+					} else {
+						textToSpeak = JSON.stringify(responseData)
+					}
+					this.ttsComponent.generateAndPlaySpeech(textToSpeak)
+				}
+			} else {
+				print(
+					'Failure: Orchestrate API call failed with status ' + response.status
+				)
+				if (this.LLM_analyse) {
+					const errorText = `❌ Error (HTTP ${response.status})\n\nBackend request failed.`
+					this.LLM_analyse.text = this.makeTextWrappable(errorText)
+				}
+			}
+		} catch (error) {
+			print('Error in handleTriggerEnd: ' + error)
+			if (this.LLM_analyse) {
+				const errorText = `❌ Error\n\n${error}`
+				this.LLM_analyse.text = this.makeTextWrappable(errorText)
+			}
+		} finally {
+			this.isProcessing = false
+		}
+	}
+
+	// More about encodeTextureToBase64: https://platform.openai.com/docs/guides/vision or https://developers.snap.com/api/lens-studio/Classes/OtherClasses#Base64
+	encodeTextureToBase64(texture) {
+		return new Promise((resolve, reject) => {
+			Base64.encodeTextureAsync(
+				texture,
+				resolve,
+				reject,
+				CompressionQuality.LowQuality,
+				EncodingType.Jpg
+			)
+		})
+	}
 }

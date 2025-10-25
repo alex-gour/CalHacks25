@@ -311,7 +311,7 @@
 - !<ScriptComponent/14168468-fa0a-401f-b2d3-56eba4dbef80>
   PrefabRemaps: []
   Name: SpeechToText
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> 68109cc9-77c2-4e56-9324-6164610d66d7
   ScriptInputsDefault: {}
   ScriptTypesDefault: {}
@@ -867,7 +867,7 @@
 - !<ScriptComponent/36a6fdd0-48e1-4d67-a46e-1dc5c4cf5db8>
   PrefabRemaps: []
   Name: CameraAPI
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> e799f18d-da38-4c37-bf65-417166d9ea84
   ScriptInputsDefault: {}
   ScriptTypesDefault: {}
@@ -879,7 +879,7 @@
 - !<ScriptComponent/3b1cbb75-b50f-4a57-ba00-02299d0fdf3e>
   PrefabRemaps: []
   Name: TextToSpeechOpenAI
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> fad8dd15-f85a-4fd9-958e-6bd8dd44da21
   ScriptInputsDefault: {}
   ScriptTypesDefault: {}
@@ -1622,7 +1622,7 @@
 - !<ScriptComponent/70d4e7f7-33a5-46aa-9894-1786f25bb816>
   PrefabRemaps: []
   Name: ConfigurationValidator
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> 5249534b-e5e3-494c-afad-124a32012655
   ScriptInputsDefault: {}
   ScriptTypesDefault: {}
@@ -1851,7 +1851,7 @@
 - !<ScriptComponent/85059e60-7909-4251-8a6d-14e1eef04e0a>
   PrefabRemaps: []
   Name: CameraAPI
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> a945a45a-3786-4570-a10e-14092911e748
   ScriptInputsDefault: {}
   ScriptTypesDefault: {}
@@ -2208,7 +2208,7 @@
 - !<ScriptComponent/9e8880b1-f865-469e-8515-08e626a3974e>
   PrefabRemaps: []
   Name: VisionOpenAI
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> 14b561ac-8b35-433c-9655-3bb4521a17ba
   ScriptInputsDefault:
     LLM_analyse: true
@@ -2385,7 +2385,7 @@
 - !<ScriptComponent/aa596a97-9d02-4c5e-b187-31655b03bcda>
   PrefabRemaps: []
   Name: HandInteractor
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> 4d0b0ec7-e669-4c4e-b2f7-32b9c59f24cc
   ScriptInputsDefault:
     _drawDebug: true
@@ -2733,7 +2733,7 @@
 - !<ScriptComponent/c42ecdd0-2586-433f-958c-9c9e8b5b5af7>
   PrefabRemaps: []
   Name: HandVisual
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> f9b29b39-ec8c-41bd-8b53-769ae9b818b8
   ScriptInputsDefault:
     selectVisual: true
@@ -3209,7 +3209,7 @@
 - !<ScriptComponent/e3319607-3c12-4a59-8fdc-7982b4a0d5c2>
   PrefabRemaps: []
   Name: SpeechToText
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> 438a5710-1b56-4b2d-9acb-ffb50aa1bd46
   ScriptInputsDefault: {}
   ScriptTypesDefault: {}
@@ -3260,7 +3260,7 @@
 - !<ScriptComponent/e46fa198-2538-46f0-9e27-bf32880141bb>
   PrefabRemaps: []
   Name: SIKLogLevelConfiguration
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> ff7d0aa1-32aa-4b47-84b7-340260da1ef0
   ScriptInputsDefault:
     _debugModeEnabled: true
