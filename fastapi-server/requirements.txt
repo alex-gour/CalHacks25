@@ -1,8 +1,19 @@
+# Core Backend Dependencies
 fastapi==0.115.12
 uvicorn==0.34.2
 pydantic==2.11.3
-requests==2.31.0 
-geopy==2.4.1
-pyngrok==6.0.0 
-anthropic==0.39.0
 python-dotenv==1.0.0
+
+# HTTP & Networking
+requests==2.31.0
+
+# Optional: AI APIs (NOT NEEDED if using Remote Service Gateway in Lens Studio)
+# anthropic==0.39.0  # Only needed for direct Claude API access
+# Pillow==10.1.0     # Only needed for image processing in backend
+
+# Optional: Development Tools
+# pyngrok==6.0.0     # For exposing local backend publicly
+# aiofiles==23.2.1   # For async file operations
+
+# Note: Vision AI is now handled by Remote Service Gateway (Gemini)
+# No API keys needed! Just generate an RSG token in Lens Studio.

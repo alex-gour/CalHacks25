@@ -1,270 +1,531 @@
-import base64
-import uuid
-from typing import Any, Dict, List
+"""
+API Routes for Auto-Reorder System
 
-from fastapi import APIRouter, Depends, Query
+This module provides REST API endpoints for:
+- Object detection and product state analysis
+- Product catalog management
+- Order placement and tracking
+- User profile and preferences
+"""
+
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
 
 from app.models.schemas import (
-    HealthcareFacility,
-    LocationRequest,
-    OrchestrationRequest,
-    Shelter,
-    SummaryRequest,
+    # Detection models
+    DetectionRequest,
+    DetectionResponse,
+    Detection,
+    # Product models
+    Product,
+    ProductList,
+    ProductCategory,
+    # Order models
+    PlaceOrderRequest,
+    PlaceOrderResponse,
+    Order,
+    OrderStatus,
+    # User models
+    UserProfile,
+    UserPreferences,
+    ProductState,
+    # General models
+    HealthCheckResponse,
+    ErrorResponse,
 )
-from app.services.claude import (
-    WorkflowPrompt,
-    determine_workflow,
-    get_general_claude_response,
-    send_vision_prompt,
-    summarize_text,
-    web_search,
+
+from app.services.vision_ai import (
+    detect_objects_from_image,
+    should_prompt_reorder,
+    analyze_product_state,
 )
-from app.services.medical import get_medical_care_locations
-from app.services.pharmacy import get_easyvax_locations
-from app.services.restroom import get_restroom_data
-from app.services.shelter import get_shelter_data
-from app.utils.geo import get_zip_from_lat_long, haversine
+from app.services.product_service import (
+    get_product_by_id,
+    get_all_products,
+    search_products,
+    get_product_by_detection_class,
+    get_products_by_detection_class,
+    get_recommended_products,
+    get_product_alternatives,
+)
+from app.services.order_service import (
+    place_order,
+    get_order_by_id,
+    get_user_orders,
+    get_order_history,
+    track_order,
+    cancel_order,
+    get_user_spending_summary,
+    get_frequently_ordered_products,
+)
+from app.services.user_service import (
+    create_user,
+    get_user,
+    get_or_create_user,
+    get_user_preferences,
+    update_user_preferences,
+    set_auto_reorder,
+    set_notification_threshold,
+    set_preferred_vendor,
+    update_delivery_address,
+    get_delivery_address,
+    block_product,
+    unblock_product,
+    is_product_blocked,
+    add_favorite_product,
+    remove_favorite_product,
+    get_favorite_products,
+    update_user_profile,
+)
 
 router = APIRouter(prefix="/api", tags=["api"])
 
-async def handle_physical_injury(user_prompt: str, image_surroundings: str) -> str:
-    """Handle internal medical problem workflow"""
-    session_id = str(uuid.uuid4())
 
-    full_prompt = f"""
-    You are to help homeless people get healthcare support. The current user has a physical medical issue. See the photo. 
-    Help them solve it. Keep response under 100 tokens! and no formatting, lists, of parenthesis. response as if you're talking.
-    
-    User prompt: {user_prompt}
-    """ 
+# ============================================================================
+# HEALTH CHECK
+# ============================================================================
 
-    image_bytes = base64.b64decode(image_surroundings)
-
-    try:
-        response = await send_vision_prompt(full_prompt, image_bytes)
-        return response
-    except Exception as e:
-        return {"sessionId": session_id, "error ": str(e)}
-
-async def handle_internal_medical(user_prompt: str) -> str:
-    """Handle internal medical problem workflow"""
-    session_id = str(uuid.uuid4())
-    try:
-        response = await get_general_claude_response(user_prompt, WorkflowPrompt.NONPHYSICAL)
-        return {
-            "sessionId": session_id,
-            "response": response
-        }
-    except Exception as e:
-        return {"sessionId": session_id, "error ": str(e)}
-
-async def handle_pharmacy_request(latitude: float, longitude: float) -> Dict[str, Any]:
-    """Handle pharmacy location request"""
-    session_id = str(uuid.uuid4())
-    try:
-        zip_code = get_zip_from_lat_long(latitude, longitude)
-        print(f"[handle_pharmacy_request] Zip code: {zip_code}")
-
-        locations = get_easyvax_locations(zip_code, session_id)
-        print(f"[handle_pharmacy_request] Locations raw: {locations}")
-
-        if not isinstance(locations, list):
-            return {"sessionId": session_id, "error": f"Expected list, got {type(locations).__name__}: {locations}"}
-
-        for loc in locations:
-            if loc.get('appointments'):
-                has_appointments = any(day['times'] for day in loc['appointments'])
-                if has_appointments:
-                    pharmacy_info = {
-                        "sessionId": session_id,
-                        "locationName": loc.get('locationName', 'Unknown'),
-                        "address": loc.get('address', 'Unknown'),
-                        "city": loc.get('city', 'Unknown'),
-                        "state": loc.get('state', 'Unknown'),
-                        "zip": loc.get('zip', 'Unknown'),
-                        "appointments": [],
-                        "distance_miles": loc.get('distance', 0),
-                    }
-                    for appointment_day in loc['appointments']:
-                        if appointment_day.get('times'):
-                            day_info = {
-                                "date": appointment_day.get('date', 'Unknown'),
-                                "times": [slot.get('time', 'Unknown') for slot in appointment_day['times']]
-                            }
-                            pharmacy_info["appointments"].append(day_info)
-                    
-                    return pharmacy_info
-        
-        return {"sessionId": session_id, "message": "No pharmacies with available appointments found."}
-
-    except Exception as e:
-        return {"sessionId": session_id, "error": f"Internal error: {str(e)}"}
-@router.post("/find_pharmacy")
-async def find_pharmacy(req: LocationRequest):
-    return await handle_pharmacy_request(req.latitude, req.longitude)
-
-async def handle_restroom_request(latitude: float, longitude: float) -> Dict[str, Any]:
-    """Handle restroom location request"""
-    session_id = str(uuid.uuid4())
-
-    try:
-        user_lat = latitude
-        user_lon = longitude
-        
-        restrooms = get_restroom_data()
-
-        closest_restroom = None
-        min_distance = float('inf')
-
-        for restroom in restrooms:
-            geom = restroom.get('the_geom')
-            if geom and 'coordinates' in geom:
-                try:
-                    toilets = int(restroom.get('toilets', 0) or 0)
-                    urinals = int(restroom.get('urinals', 0) or 0)
-                    faucets = int(restroom.get('faucets', 0) or 0)
-                except (ValueError, TypeError):
-                    toilets = urinals = faucets = 0
-
-                if toilets == 0 and urinals == 0 and faucets == 0:
-                    continue
-
-                lon, lat = geom['coordinates']
-                distance = haversine(user_lon, user_lat, lon, lat)
-
-                if distance < min_distance:
-                    min_distance = distance
-                    closest_restroom = {
-                        "facility": restroom.get('facility', 'Unknown'),
-                        "gender": restroom.get('gender', 'Unknown'),
-                        "toilets": toilets,
-                        "urinals": urinals,
-                        "faucets": faucets,
-                        "location": geom,
-                        "distance_miles": round(distance, 2)
-                    }
-
-        if closest_restroom:
-            return {
-                "sessionId": session_id,
-                "nearestRestroom": closest_restroom
-            }
-        else:
-            return {
-                "sessionId": session_id,
-                "message": "No restrooms found."
-            }
-
-    except Exception as e:
-        return {"sessionId": session_id, "error string 2": str(e)}
-
-@router.post("/find_restroom")
-async def find_restroom(req: LocationRequest):
-    return await handle_restroom_request(req.latitude, req.longitude)
-@router.post("/find_healthcare_facilities")
-async def find_healthcare_facilities(req: LocationRequest):
-    return await handle_medical_center_request(req.latitude, req.longitude)
-
-async def handle_medical_center_request(latitude: float, longitude: float, limit: int = 5) -> Dict[str, Any]:
-    """Handle medical center location request"""
-    session_id = str(uuid.uuid4())
-    try:
-        facilities = get_medical_care_locations(latitude, longitude, limit)
-        
-        if isinstance(facilities, dict) and "error" in facilities:
-            return {"sessionId": session_id, "error string 3": facilities["error"]}
-        
-        return {
-            "sessionId": session_id,
-            "facilities": facilities
-        }
-    except Exception as e:
-        return {"sessionId": session_id, "error": str(e)}
-
-async def handle_shelter_request(latitude: float, longitude: float) -> Dict[str, Any]:
-    """Handle shelter location request"""
-    session_id = str(uuid.uuid4())  # Generate fresh session UUID
-    try:
-        if not latitude or not longitude:
-            return {"sessionId": session_id, "error string 4": "Latitude and longitude are required."}
-        
-        print(f"Latitude: {latitude}, Longitude: {longitude}")
-        zip_code = get_zip_from_lat_long(latitude, longitude)
-                
-        nearest_resource = get_shelter_data(latitude, longitude, zip_code)
-        
-        return {
-            "sessionId": session_id,
-            "zipCode": zip_code,
-            "nearest_resource": nearest_resource,
-            "message": "Found nearest homeless resource."
-        }
-    
-    except Exception as e:
-        return {"sessionId": session_id, "error string 5": str(e)}
-
-@router.post("/find_shelter")
-async def find_shelter(req: LocationRequest):
-    return await handle_shelter_request(req.latitude, req.longitude)
-
-async def handle_physical_resource_request(latitude: float, longitude: float, user_prompt: str) -> Dict[str, Any]:
-    """Handle physical resource location request"""
-    session_id = str(uuid.uuid4())
-    try:
-        response = await web_search(user_prompt, latitude, longitude)
-        return {
-            "sessionId": session_id,
-            "response": response,
-            "location": {"latitude": latitude, "longitude": longitude}
-        }
-    except Exception as e:
-        return {"sessionId": session_id, "error": str(e)}
-
-@router.post("/summarize")
-async def summarize(req: SummaryRequest):
-    try:
-        result = await summarize_text(req.summaryPrompt)
-        return {"summary": result}
-    except Exception as e:
-        return {"error": str(e)}
+@router.get("/", response_model=HealthCheckResponse)
+async def root():
+    """Health check endpoint"""
+    return HealthCheckResponse(
+        status="healthy",
+        version="1.0.0",
+        timestamp=datetime.utcnow(),
+    )
 
 
-@router.post("/orchestrate", response_model=Dict[str, Any])
-async def orchestrate(req: OrchestrationRequest):
+@router.get("/health", response_model=HealthCheckResponse)
+async def health_check():
+    """Detailed health check"""
+    return HealthCheckResponse(
+        status="healthy",
+        version="1.0.0",
+        timestamp=datetime.utcnow(),
+    )
+
+
+# ============================================================================
+# OBJECT DETECTION ENDPOINTS
+# ============================================================================
+
+@router.post("/detect", response_model=DetectionResponse)
+async def detect_objects(request: DetectionRequest):
     """
-    Orchestration endpoint that determines which service to call based on semantic similarity.
+    Detect objects and their states from an image
+    
+    This endpoint:
+    1. Analyzes image for household products
+    2. Determines product state (full/empty/low)
+    3. Matches detected objects to product database
+    4. Returns list of detections with confidence scores
+    
+    Example:
+        POST /api/detect
+        {
+            "image": "base64_encoded_image_here",
+            "user_id": "user_123",
+            "confidence_threshold": 0.7
+        }
+    """
+    try:
+        # Perform detection
+        response = await detect_objects_from_image(
+            request.image,
+            confidence_threshold=request.confidence_threshold,
+        )
+        
+        # Match products if requested
+        if request.return_matches:
+            for detection in response.detections:
+                product = get_product_by_detection_class(detection.class_name)
+                if product:
+                    detection.matched_product = product
+        
+        # Check if any products should trigger reorder
+        if request.user_id:
+            user = get_or_create_user(request.user_id)
+            reorder_candidates = await should_prompt_reorder(
+                response.detections,
+                user.preferences.notification_threshold,
+            )
+            
+            # Filter out blocked products
+            reorder_candidates = [
+                d for d in reorder_candidates
+                if d.matched_product and not is_product_blocked(
+                    request.user_id,
+                    d.matched_product.product_id
+                )
+            ]
+            
+            # Add reorder flag to response (custom field)
+            response_dict = response.model_dump()
+            response_dict["reorder_candidates"] = len(reorder_candidates)
+            return JSONResponse(content=response_dict)
+        
+        return response
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/detect/analyze-state")
+async def analyze_state(
+    image: str,
+    product_class: str,
+):
+    """
+    Analyze the state of a specific product in an image
     
     Args:
-        req: Request containing user prompt, location, and optional image
+        image: Base64 encoded image
+        product_class: Product class name (e.g., "water_bottle")
         
     Returns:
-        Dictionary with response from the most appropriate service
+        State and confidence score
     """
     try:
-        # Determine the workflow using Gemini
-        workflow_type = await determine_workflow(req.user_prompt)
+        state, confidence = await analyze_product_state(image, product_class)
         
-        # Route to the appropriate service based on workflow type
-        if workflow_type == "A":
-            return await handle_physical_injury(req.user_prompt, req.image_surroundings)
-        elif workflow_type == "B":
-            return await handle_internal_medical(req.user_prompt)
-        elif workflow_type == "C":
-            return await handle_shelter_request(req.latitude, req.longitude)
-        elif workflow_type == "D":
-            return await handle_pharmacy_request(req.latitude, req.longitude)
-        elif workflow_type == "E":
-            return await handle_medical_center_request(req.latitude, req.longitude)
-        elif workflow_type == "F":
-            return await handle_restroom_request(req.latitude, req.longitude)
-        elif workflow_type == "G":
-            return await handle_physical_resource_request(req.latitude, req.longitude, req.user_prompt)
-        else:
-            raise ValueError(f"Unknown workflow type: {workflow_type}")
-            
+        return {
+            "product_class": product_class,
+            "state": state,
+            "confidence": confidence,
+        }
     except Exception as e:
-        return {"sessionId": str(uuid.uuid4()), "error string 6" : str(e)} 
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# PRODUCT ENDPOINTS
+# ============================================================================
+
+@router.get("/products", response_model=ProductList)
+async def list_products(
+    query: Optional[str] = Query(None, description="Search query"),
+    category: Optional[ProductCategory] = Query(None, description="Filter by category"),
+    min_price: Optional[float] = Query(None, description="Minimum price"),
+    max_price: Optional[float] = Query(None, description="Maximum price"),
+):
+    """
+    List and search products
     
-@router.get("/")
-async def root():
-    return {"message": "Welcome to the FastAPI server!"}
+    Supports filtering by:
+    - Text search (name, description)
+    - Category
+    - Price range
+    """
+    try:
+        if query or category or min_price or max_price:
+            return search_products(
+                query=query,
+                category=category,
+                min_price=min_price,
+                max_price=max_price,
+            )
+        else:
+            return get_all_products()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/products/{product_id}", response_model=Product)
+async def get_product(product_id: str):
+    """Get product by ID"""
+    product = get_product_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+
+@router.get("/products/class/{detection_class}")
+async def get_products_by_class(detection_class: str):
+    """
+    Get products matching a detection class
+    
+    Args:
+        detection_class: CV model class name (e.g., "water_bottle")
+        
+    Returns:
+        List of matching products
+    """
+    products = get_products_by_detection_class(detection_class)
+    return {"detection_class": detection_class, "products": products}
+
+
+@router.get("/products/{product_id}/alternatives")
+async def get_alternatives(product_id: str, limit: int = Query(3, ge=1, le=10)):
+    """Get alternative products (same category, similar price)"""
+    alternatives = get_product_alternatives(product_id, limit=limit)
+    return {"product_id": product_id, "alternatives": alternatives}
+
+
+@router.get("/products/recommendations/{user_id}")
+async def get_recommendations(
+    user_id: str,
+    category: Optional[ProductCategory] = None,
+    limit: int = Query(5, ge=1, le=20),
+):
+    """Get recommended products for user"""
+    recommendations = get_recommended_products(user_id, category=category, limit=limit)
+    return {"user_id": user_id, "recommendations": recommendations}
+
+
+# ============================================================================
+# ORDER ENDPOINTS
+# ============================================================================
+
+@router.post("/orders", response_model=PlaceOrderResponse)
+async def create_order(request: PlaceOrderRequest):
+    """
+    Place a new order
+    
+    Example:
+        POST /api/orders
+        {
+            "user_id": "user_123",
+            "product_id": "prod_water_001",
+            "quantity": 1,
+            "confirm": true,
+            "delivery_address": {
+                "street": "123 Main St",
+                "city": "San Francisco",
+                "state": "CA",
+                "zip": "94102"
+            }
+        }
+    """
+    try:
+        # Get user's default address if not provided
+        if not request.delivery_address and request.user_id:
+            default_address = get_delivery_address(request.user_id)
+            if default_address:
+                request.delivery_address = default_address
+        
+        result = await place_order(request)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/orders/{order_id}", response_model=Order)
+async def get_order(order_id: str):
+    """Get order by ID"""
+    order = get_order_by_id(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+@router.get("/orders/user/{user_id}")
+async def get_orders(
+    user_id: str,
+    status: Optional[OrderStatus] = None,
+    limit: int = Query(50, ge=1, le=200),
+):
+    """Get orders for a user"""
+    orders = get_user_orders(user_id, status=status, limit=limit)
+    return {"user_id": user_id, "orders": orders, "total": len(orders)}
+
+
+@router.get("/orders/{order_id}/track")
+async def track_order_status(order_id: str):
+    """Get tracking information for an order"""
+    tracking = await track_order(order_id)
+    if not tracking:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return tracking
+
+
+@router.post("/orders/{order_id}/cancel")
+async def cancel_order_endpoint(
+    order_id: str,
+    user_id: str,
+    reason: Optional[str] = None,
+):
+    """Cancel an order"""
+    result = await cancel_order(order_id, user_id, reason or "")
+    
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "Unknown error"))
+    
+    return result
+
+
+@router.get("/orders/user/{user_id}/history")
+async def order_history(user_id: str, limit: int = Query(10, ge=1, le=50)):
+    """Get recent order history"""
+    history = get_order_history(user_id, limit=limit)
+    return {"user_id": user_id, "history": history}
+
+
+@router.get("/orders/user/{user_id}/summary")
+async def spending_summary(user_id: str):
+    """Get spending summary for user"""
+    summary = get_user_spending_summary(user_id)
+    return summary
+
+
+@router.get("/orders/user/{user_id}/frequent")
+async def frequent_products(user_id: str, limit: int = Query(5, ge=1, le=20)):
+    """Get frequently ordered products"""
+    products = get_frequently_ordered_products(user_id, limit=limit)
+    return {"user_id": user_id, "frequent_products": products}
+
+
+# ============================================================================
+# USER ENDPOINTS
+# ============================================================================
+
+@router.post("/users", response_model=UserProfile)
+async def create_user_endpoint(
+    user_id: str,
+    email: Optional[str] = None,
+    name: Optional[str] = None,
+):
+    """Create a new user"""
+    try:
+        user = create_user(user_id, email=email, name=name)
+        return user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/users/{user_id}", response_model=UserProfile)
+async def get_user_endpoint(user_id: str):
+    """Get user profile"""
+    user = get_user(user_id)
+    if not user:
+        # Auto-create user if not exists
+        user = create_user(user_id)
+    return user
+
+
+@router.put("/users/{user_id}")
+async def update_user_endpoint(
+    user_id: str,
+    email: Optional[str] = None,
+    name: Optional[str] = None,
+):
+    """Update user profile"""
+    user = update_user_profile(user_id, email=email, name=name)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.get("/users/{user_id}/preferences", response_model=UserPreferences)
+async def get_preferences(user_id: str):
+    """Get user preferences"""
+    prefs = get_user_preferences(user_id)
+    if not prefs:
+        raise HTTPException(status_code=404, detail="User not found")
+    return prefs
+
+
+@router.put("/users/{user_id}/preferences")
+async def update_preferences(user_id: str, updates: Dict[str, Any]):
+    """Update user preferences"""
+    prefs = update_user_preferences(user_id, updates)
+    if not prefs:
+        raise HTTPException(status_code=404, detail="User not found")
+    return prefs
+
+
+@router.post("/users/{user_id}/preferences/auto-reorder")
+async def toggle_auto_reorder(user_id: str, enabled: bool):
+    """Enable/disable auto-reorder"""
+    success = set_auto_reorder(user_id, enabled)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user_id, "auto_reorder_enabled": enabled}
+
+
+@router.post("/users/{user_id}/preferences/threshold")
+async def set_threshold(user_id: str, threshold: ProductState):
+    """Set notification threshold"""
+    success = set_notification_threshold(user_id, threshold)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user_id, "threshold": threshold}
+
+
+@router.post("/users/{user_id}/preferences/vendor")
+async def set_vendor(user_id: str, vendor: str):
+    """Set preferred vendor"""
+    success = set_preferred_vendor(user_id, vendor)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user_id, "preferred_vendor": vendor}
+
+
+@router.post("/users/{user_id}/address")
+async def set_address(user_id: str, address: Dict[str, str]):
+    """Update delivery address"""
+    success = update_delivery_address(user_id, address)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user_id, "address": address}
+
+
+@router.get("/users/{user_id}/address")
+async def get_address(user_id: str):
+    """Get delivery address"""
+    address = get_delivery_address(user_id)
+    return {"user_id": user_id, "address": address}
+
+
+@router.post("/users/{user_id}/blocked/{product_id}")
+async def block_product_endpoint(user_id: str, product_id: str):
+    """Block a product"""
+    success = block_product(user_id, product_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user_id, "blocked_product": product_id}
+
+
+@router.delete("/users/{user_id}/blocked/{product_id}")
+async def unblock_product_endpoint(user_id: str, product_id: str):
+    """Unblock a product"""
+    success = unblock_product(user_id, product_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user_id, "unblocked_product": product_id}
+
+
+@router.post("/users/{user_id}/favorites/{product_id}")
+async def add_favorite_endpoint(user_id: str, product_id: str):
+    """Add product to favorites"""
+    success = add_favorite_product(user_id, product_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user_id, "favorited_product": product_id}
+
+
+@router.delete("/users/{user_id}/favorites/{product_id}")
+async def remove_favorite_endpoint(user_id: str, product_id: str):
+    """Remove product from favorites"""
+    success = remove_favorite_product(user_id, product_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user_id": user_id, "unfavorited_product": product_id}
+
+
+@router.get("/users/{user_id}/favorites")
+async def get_favorites(user_id: str):
+    """Get favorite products"""
+    favorites = get_favorite_products(user_id)
+    return {"user_id": user_id, "favorites": favorites}
+
+
+# ============================================================================
+# LEGACY ENDPOINTS (kept for backward compatibility)
+# ============================================================================
+
+# You can keep the old endpoints here if needed for backward compatibility
+# or remove them if you're doing a clean refactor
