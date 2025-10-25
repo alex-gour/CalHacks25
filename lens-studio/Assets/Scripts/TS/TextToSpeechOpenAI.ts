@@ -4,8 +4,7 @@ import { HttpClient, HttpFetchModule } from "./utils/HttpClient";
 export class TextToSpeechOpenAI extends BaseScriptComponent {
   @input audioComponent: AudioComponent;
   @input audioOutputAsset: Asset;
-  @input(Component.RemoteServiceModule)
-  remoteServiceModule: HttpFetchModule;
+  internetModule?: HttpFetchModule;
 
   @input("string")
   apiKey: string = "";
@@ -42,16 +41,16 @@ export class TextToSpeechOpenAI extends BaseScriptComponent {
       return;
     }
 
-    if (!this.remoteServiceModule) {
-      print("Remote Service module is missing. Assign it in the Inspector.");
+    if (this.internetModule) {
+      this.httpClient.setFetcher(this.internetModule);
     } else {
-      this.httpClient.setFetcher(this.remoteServiceModule);
+      print("Internet Module is missing. Assign it in the Inspector or rely on global fetch fallback.");
     }
   }
 
   public async generateAndPlaySpeech(inputText: string) {
-    if (this.remoteServiceModule) {
-      this.httpClient.setFetcher(this.remoteServiceModule);
+    if (this.internetModule) {
+      this.httpClient.setFetcher(this.internetModule);
     }
     if (!inputText) {
       print("No text provided for speech synthesis.");
