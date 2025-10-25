@@ -1,38 +1,50 @@
 - !<AssetImportMetadata/0e373853-59e9-4680-a977-5927a58d685b>
-  ImporterSettings: !<AssetImporterSettings> {}
   ImportedAssetIds:
     TypeScriptAsset: !<reference> 1ad7da86-2c32-418c-bdf1-b7150c07c912
   ImporterName: TypeScriptAssetImporter
   PrimaryAsset: !<reference> 1ad7da86-2c32-418c-bdf1-b7150c07c912
   PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
   AssetDataMap:
     TypeScriptAsset: !<own> 3de3c68c-52ee-41d9-a220-5f02e6d2b739
-  PackagePolicy: CannotBeUnpacked
-  DependentFiles: []
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
   CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
-  ExtraData: {}
 - !<TypeScriptAssetData/3de3c68c-52ee-41d9-a220-5f02e6d2b739>
-  Icon: ""
+  SvgIcon: ""
+  SetupScript:
+    code: ""
   Description: ""
   VersionMajor: 0
   VersionMinor: 0
   VersionPatch: 0
   ComponentUid: 3ecb5575-4a89-4cea-bc78-a477374ccca6
   ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
   ScriptInputsHidden:
     hoverAudioTrack: false
     triggerEndAudioTrack: false
     triggerStartAudioTrack: false
-  ScriptTypesHidden: {}
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
   DefaultScriptInputs:
     - hoverAudioTrack: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
       triggerStartAudioTrack: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
       triggerEndAudioTrack: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
   ScriptTypes:
-    - {}
+    -
+      {}
   InputLines:
-    - // @input Asset.AudioTrackAsset hoverAudioTrack {"hint":"This sound will play when the Interactable is hovered"}
-    - // @input Asset.AudioTrackAsset triggerStartAudioTrack {"hint":"This sound will play when starting the trigger the Interactable"}
-    - // @input Asset.AudioTrackAsset triggerEndAudioTrack {"hint":"This sound will play when ending the trigger of the Interactable"}
-  SvgIcon: ""
-  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+    - '// @input Asset.AudioTrackAsset hoverAudioTrack {"hint":"This sound will play when the Interactable is hovered"}'
+    - '// @input Asset.AudioTrackAsset triggerStartAudioTrack {"hint":"This sound will play when starting the trigger the Interactable"}'
+    - '// @input Asset.AudioTrackAsset triggerEndAudioTrack {"hint":"This sound will play when ending the trigger of the Interactable"}'

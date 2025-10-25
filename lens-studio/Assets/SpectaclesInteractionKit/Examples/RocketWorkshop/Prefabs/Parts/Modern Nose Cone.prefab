@@ -5,7 +5,8 @@
   LazyLoading: false
   RetainAssets: true
 - !<RenderMeshVisual/11403b4f-4c66-4036-a5da-ed396691bcdd>
-  PrefabRemaps: []
+  PrefabRemaps:
+    []
   Name: component_0
   Enabled: true
   RenderOrder: 0
@@ -21,9 +22,11 @@
   Skin: !<reference> 00000000-0000-0000-0000-000000000000
   BlendShapesEnabled: true
   BlendNormals: false
-  BlendShapes: {}
+  BlendShapes:
+    {}
 - !<RenderMeshVisual/171e5912-ea12-4180-b993-b64716c6f319>
-  PrefabRemaps: []
+  PrefabRemaps:
+    []
   Name: component_0
   Enabled: true
   RenderOrder: 0
@@ -39,24 +42,31 @@
   Skin: !<reference> 00000000-0000-0000-0000-000000000000
   BlendShapesEnabled: true
   BlendNormals: false
-  BlendShapes: {}
+  BlendShapes:
+    {}
 - !<SceneObject/21110558-d920-448c-b9d4-cf8824f15945>
-  PrefabRemaps: []
+  PrefabRemaps:
+    - 11403b4f-4c66-4036-a5da-ed396691bcdd: 11403b4f-4c66-4036-5a25-12c6996e4322
+    - 171e5912-ea12-4180-b993-b64716c6f319: 171e5912-ea12-4180-466c-49b8e9390ce6
+    - 21110558-d920-448c-b9d4-cf8824f15945: 21110558-d920-448c-462b-3077db0ea6ba
+    - bd83d706-31e8-45e7-b8ab-6426ccb4ae4a: bd83d706-31e8-45e7-4754-9bd9334b51b5
   Name: Modern Nose Cone
   Enabled: true
   Layers: 1
   LocalTransform: !<TransformEntity>
     Position: {x: 0.000000, y: 8.794556, z: 0.000000}
-    Rotation: {x: 0.000000, y: -0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
     Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
     HasSegmentScaleCompensation: false
-  Children: []
+  Children:
+    []
   Components:
     - !<own> bd83d706-31e8-45e7-b8ab-6426ccb4ae4a
     - !<own> 11403b4f-4c66-4036-a5da-ed396691bcdd
     - !<own> 171e5912-ea12-4180-b993-b64716c6f319
 - !<RenderMeshVisual/bd83d706-31e8-45e7-b8ab-6426ccb4ae4a>
-  PrefabRemaps: []
+  PrefabRemaps:
+    []
   Name: component_0
   Enabled: true
   RenderOrder: 0
@@ -72,4 +82,5 @@
   Skin: !<reference> 00000000-0000-0000-0000-000000000000
   BlendShapesEnabled: true
   BlendNormals: false
-  BlendShapes: {}
+  BlendShapes:
+    {}

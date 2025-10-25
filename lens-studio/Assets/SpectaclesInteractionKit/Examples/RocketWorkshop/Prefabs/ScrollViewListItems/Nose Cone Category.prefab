@@ -5,7 +5,8 @@
   LazyLoading: false
   RetainAssets: true
 - !<ScreenTransform/2d475895-1e1b-4569-9750-4afad5f6c70f>
-  PrefabRemaps: []
+  PrefabRemaps:
+    []
   Name: Screen Transform
   Enabled: true
   IsAdvanced: false
@@ -37,7 +38,8 @@
     right: 0.000000
     top: 1.000000
 - !<Text/3756275a-da57-4868-9b6a-cd9aa5f2b542>
-  PrefabRemaps: []
+  PrefabRemaps:
+    []
   Name: Text 2
   Enabled: true
   RenderOrder: 0
@@ -65,15 +67,18 @@
     Mode: Solid
     Color: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
     Texture: !<reference> 00000000-0000-0000-0000-000000000000
+    ColorTint: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
     TileCount: 5.000000
     TileZone: Rect
     TextureStretch: FitWidth
+  BlendMode: PremultipliedAlpha
   Outline: !<OutlineSettings>
     Enabled: false
     Fill: !<TextFill>
       Mode: Solid
       Color: {x: 0.000000, y: 0.000000, z: 0.000000, w: 1.000000}
       Texture: !<reference> 00000000-0000-0000-0000-000000000000
+      ColorTint: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
       TileCount: 5.000000
       TileZone: Rect
       TextureStretch: FitWidth
@@ -84,6 +89,7 @@
       Mode: Solid
       Color: {x: 0.000000, y: 0.000000, z: 0.000000, w: 1.000000}
       Texture: !<reference> 00000000-0000-0000-0000-000000000000
+      ColorTint: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
       TileCount: 5.000000
       TileZone: Rect
       TextureStretch: FitWidth
@@ -95,6 +101,7 @@
       Mode: Solid
       Color: {x: 0.000000, y: 0.000000, z: 0.000000, w: 1.000000}
       Texture: !<reference> 00000000-0000-0000-0000-000000000000
+      ColorTint: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
       TileCount: 5.000000
       TileZone: Rect
       TextureStretch: FitWidth
@@ -109,17 +116,21 @@
     LetterSpacing: 0.000000
     LineSpacing: 1.000000
     CapitalizationOverride: None
-    CapitilizationOverride: None
   DepthTest: false
   TwoSided: false
 - !<SceneObject/8eea4897-15f2-4316-827f-1d33f6d5a214>
-  PrefabRemaps: []
+  PrefabRemaps:
+    - 2d475895-1e1b-4569-9750-4afad5f6c70f: 2d475895-1e1b-4569-68af-b5052a0938f0
+    - 3756275a-da57-4868-9b6a-cd9aa5f2b542: 3756275a-da57-4868-6495-32655a0d4abd
+    - 8eea4897-15f2-4316-827f-1d33f6d5a214: 8eea4897-15f2-4316-7d80-e2cc092a5deb
+    - d920d9d0-9035-4f60-873d-5b4e6e91a803: d920d9d0-9035-4f60-78c2-a4b1916e57fc
+    - f26425d8-27c6-4575-bb5b-d3922bf5fac5: f26425d8-27c6-4575-44a4-2c6dd40a053a
   Name: ScrollViewListItem
   Enabled: true
   Layers: 1
   LocalTransform: !<TransformEntity>
     Position: {x: 0.000000, y: 0.300000, z: 0.000000}
-    Rotation: {x: 0.000000, y: -0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
     Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
     HasSegmentScaleCompensation: false
   Children:
@@ -127,7 +138,8 @@
   Components:
     - !<own> f26425d8-27c6-4575-bb5b-d3922bf5fac5
 - !<SceneObject/d920d9d0-9035-4f60-873d-5b4e6e91a803>
-  PrefabRemaps: []
+  PrefabRemaps:
+    []
   Name: ContactName
   Enabled: true
   Layers: 1
@@ -136,12 +148,14 @@
     Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
     Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
     HasSegmentScaleCompensation: false
-  Children: []
+  Children:
+    []
   Components:
     - !<own> 2d475895-1e1b-4569-9750-4afad5f6c70f
     - !<own> 3756275a-da57-4868-9b6a-cd9aa5f2b542
 - !<ScreenTransform/f26425d8-27c6-4575-bb5b-d3922bf5fac5>
-  PrefabRemaps: []
+  PrefabRemaps:
+    []
   Name: Screen Transform
   Enabled: true
   IsAdvanced: false

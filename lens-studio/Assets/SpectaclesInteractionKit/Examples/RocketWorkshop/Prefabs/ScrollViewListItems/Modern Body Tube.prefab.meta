@@ -56,6 +56,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -63,6 +64,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -166,6 +168,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -173,6 +176,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":

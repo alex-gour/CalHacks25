@@ -982,6 +982,7 @@
   ScriptAsset: !<reference> 652e631a-22d0-4941-9f74-2943df59f34c
   ScriptInputsDefault:
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -989,6 +990,7 @@
     "":
       targetingMode: !<float> 7.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -1041,6 +1043,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -1048,6 +1051,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -1441,6 +1445,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -1448,6 +1453,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -2924,6 +2930,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -2931,6 +2938,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -3109,6 +3117,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -3116,6 +3125,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -3685,6 +3695,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -3692,6 +3703,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -3842,6 +3854,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -3849,6 +3862,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -3971,6 +3985,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -3978,6 +3993,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -4065,6 +4081,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -4072,6 +4089,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -4183,6 +4201,7 @@
   ScriptAsset: !<reference> 652e631a-22d0-4941-9f74-2943df59f34c
   ScriptInputsDefault:
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -4190,6 +4209,7 @@
     "":
       targetingMode: !<float> 7.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -4328,7 +4348,7 @@
     {}
   ScriptInputs:
     "":
-      rocketConfigurator: !<MappingBased.RocketConfigurator> dce8ac2d-1cca-4db4-6281-c5d288a67570
+      rocketConfigurator: !<MappingBased.AssignableType> dce8ac2d-1cca-4db4-6281-c5d288a67570
       objectPrefabs: !<reference.ObjectPrefab[]>
         - !<reference> 6c612d5f-8b1a-4b14-9516-46e23f841a5d
         - !<reference> 35f484ab-060f-45e0-a065-e7573bce57ca
@@ -4519,6 +4539,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -4526,6 +4547,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -4628,6 +4650,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -4635,6 +4658,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -4801,16 +4825,16 @@
     {}
   ScriptInputs:
     "":
-      slider: !<MappingBased.Slider> f89c0785-23d5-4ad0-45d6-c894284d8be6
+      slider: !<MappingBased.AssignableType> f89c0785-23d5-4ad0-45d6-c894284d8be6
       animationAButton: !<reference.SceneObject> 4f5e90b3-c743-4580-5927-c05bca9bae7c
       animationBButton: !<reference.SceneObject> 78c63af4-c800-49ae-49f6-eb67ce4cf367
       animationCButton: !<reference.SceneObject> 0a4a7312-b206-4425-5921-c7c6269df1e0
       launchButton: !<reference.SceneObject> c0f4a09a-2f9d-4f99-43f3-4513872d92b2
-      rocketConf: !<MappingBased.RocketConfigurator> dce8ac2d-1cca-4db4-6281-c5d288a67570
+      rocketConf: !<MappingBased.AssignableType_1> dce8ac2d-1cca-4db4-6281-c5d288a67570
       launchSparks: !<reference.SceneObject> f4e93009-89a3-47e4-6fd4-758c4046b24d
       rocketAnimationPlayer: !<reference.AnimationPlayer> daa5b5bc-4d7e-4a0e-67ee-d617d3dbbecf
       flightPathText: !<reference.Text> e6ac815d-2b69-45b5-70ac-441e209b5608
-      launchPlatformToggleButton: !<MappingBased.ToggleButton> 3c64332c-490d-4b34-46b4-b06fcaf30a24
+      launchPlatformToggleButton: !<MappingBased.AssignableType_2> 3c64332c-490d-4b34-46b4-b06fcaf30a24
       launchPlatform: !<reference.SceneObject> 3bff419b-5ccf-447c-63ad-7090ece09b0d
   ScriptTypes:
     "":
@@ -4952,6 +4976,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -4959,6 +4984,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -5433,6 +5459,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -5440,6 +5467,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -6420,6 +6448,7 @@
   ScriptAsset: !<reference> 652e631a-22d0-4941-9f74-2943df59f34c
   ScriptInputsDefault:
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -6427,6 +6456,7 @@
     "":
       targetingMode: !<float> 7.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -6655,6 +6685,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -6662,6 +6693,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -6810,6 +6842,7 @@
   ScriptAsset: !<reference> 652e631a-22d0-4941-9f74-2943df59f34c
   ScriptInputsDefault:
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -6817,6 +6850,7 @@
     "":
       targetingMode: !<float> 7.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -6999,6 +7033,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -7006,6 +7041,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -8287,6 +8323,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -8294,6 +8331,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -9528,6 +9566,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -9535,6 +9574,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -9709,6 +9749,7 @@
   ScriptAsset: !<reference> 652e631a-22d0-4941-9f74-2943df59f34c
   ScriptInputsDefault:
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -9716,6 +9757,7 @@
     "":
       targetingMode: !<float> 7.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -9818,6 +9860,7 @@
   ScriptAsset: !<reference> 652e631a-22d0-4941-9f74-2943df59f34c
   ScriptInputsDefault:
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -9825,6 +9868,7 @@
     "":
       targetingMode: !<float> 7.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -10314,6 +10358,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -10321,6 +10366,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":
@@ -10617,6 +10663,7 @@
   ScriptInputsDefault:
     targetingMode: true
     enableInstantDrag: true
+    isScrollable: true
     allowMultipleInteractors: true
   ScriptTypesDefault:
     {}
@@ -10624,6 +10671,7 @@
     "":
       targetingMode: !<float> 3.000000
       enableInstantDrag: false
+      isScrollable: false
       allowMultipleInteractors: true
   ScriptTypes:
     "":

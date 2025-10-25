@@ -4,13 +4,17 @@
   ImporterName: FileTextureImporter
   PrimaryAsset: !<reference> 42822012-60f9-4ead-8b9a-484aba94be0b
   PackageType: NotAPackage
-  PackagePolicy: CannotBeUnpacked
-  AssetDataMap: {}
-  DependentFiles: []
-  ImporterSettings: !<AssetImporterSettings> {}
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    {}
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
   CompressionSettings: !<SingleCompressionSettings>
     CompressorName: Performance
     CompressionSettings: !<TextureCompressionMipmapSettings>
       Level: Medium
       Mipmap: false
-  ExtraData: {}

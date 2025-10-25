@@ -4,23 +4,30 @@
   ImporterName: TypeScriptAssetImporter
   PrimaryAsset: !<reference> 1cde895a-a2ed-4eae-ab8b-5c5117ec7eb7
   PackageType: NotAPackage
-  PackagePolicy: CannotBeUnpacked
-  ExtraData: {}
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
   AssetDataMap:
     TypeScriptAsset: !<own> 9fa739a2-e0a2-45a4-aaf1-450d271727d9
-  DependentFiles: []
-  ImporterSettings: !<AssetImporterSettings> {}
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
   CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
 - !<TypeScriptAssetData/9fa739a2-e0a2-45a4-aaf1-450d271727d9>
   SvgIcon: ""
+  SetupScript:
+    code: ""
   Description: ""
   VersionMajor: 0
   VersionMinor: 0
   VersionPatch: 0
   ComponentUid: 260151ba-e94d-4cf9-b586-ef73e8cc2ebf
   ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
   ScriptInputsHidden:
     LLM_analyse: false
+    backendBaseUrl: false
     chatHistoryText: false
     enableSummary: false
     image: false
@@ -30,29 +37,38 @@
     textInput: false
     textOutput: false
     ttsComponent: false
-  ScriptTypesHidden: {}
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
   DefaultScriptInputs:
     - textInput: !<reference.Text> 00000000-0000-0000-0000-000000000000
       textOutput: !<reference.Text> 00000000-0000-0000-0000-000000000000
       image: !<reference.Image> 00000000-0000-0000-0000-000000000000
-      interactable: !<MappingBased.Interactable> 00000000-0000-0000-0000-000000000000
-      ttsComponent: !<MappingBased.TextToSpeechOpenAI> 00000000-0000-0000-0000-000000000000
+      interactable: !<MappingBased.AssignableType> 00000000-0000-0000-0000-000000000000
+      ttsComponent: !<MappingBased.AssignableType_1> 00000000-0000-0000-0000-000000000000
       LLM_analyse: !<reference.Text> 00000000-0000-0000-0000-000000000000
-      maxCharsPerLine: !<float> 60.000000
       chatHistoryText: !<reference.Text> 00000000-0000-0000-0000-000000000000
       maxHistoryLength: !<float> 10.000000
       enableSummary: true
+      maxCharsPerLine: !<float> 60.000000
+      backendBaseUrl: ""
   ScriptTypes:
-    - {}
+    -
+      {}
   InputLines:
     - // @input Component.Text textInput
     - // @input Component.Text textOutput
     - // @input Component.Image image
-    - // @input Interactable interactable
-    - // @input TextToSpeechOpenAI ttsComponent
+    - // @input AssignableType interactable
+    - // @input AssignableType_1 ttsComponent
     - // @input Component.Text LLM_analyse
     - // @input Component.Text chatHistoryText
     - // @input float maxHistoryLength = 10
     - // @input bool enableSummary = true
     - // @input float maxCharsPerLine = 100
-  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+    - // @input string backendBaseUrl

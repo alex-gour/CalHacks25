@@ -4,7 +4,7 @@
   ImporterName: FileTextureImporter
   PrimaryAsset: !<reference> 92ea1a9b-ec60-4998-b4f4-3822d0f0e70a
   PackageType: NotAPackage
-  PackagePolicy: CannotBeUnpacked
+  LegacyPackagePolicy: ~
   ExtraData:
     {}
   AssetDataMap:
