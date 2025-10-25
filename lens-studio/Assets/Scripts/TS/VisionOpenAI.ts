@@ -38,8 +38,7 @@ export class VisionOpenAI extends BaseScriptComponent {
   @input("string")
   backendBaseUrl: string = "";
 
-  @input(Component.RemoteServiceModule)
-  remoteServiceModule: HttpFetchModule;
+  internetModule?: HttpFetchModule;
 
   private httpClient = new HttpClient();
 
@@ -71,10 +70,10 @@ export class VisionOpenAI extends BaseScriptComponent {
       print("Backend base URL is not configured. Set backendBaseUrl on the component.");
     }
 
-    if (!this.remoteServiceModule) {
-      print("Remote Service module is missing. Assign it in the Inspector.");
+    if (this.internetModule) {
+      this.httpClient.setFetcher(this.internetModule);
     } else {
-      this.httpClient.setFetcher(this.remoteServiceModule);
+      print("Internet Module is missing. Assign it in the Inspector or rely on global fetch fallback.");
     }
 
     // Initialize location service
@@ -179,8 +178,8 @@ export class VisionOpenAI extends BaseScriptComponent {
         };
       }
 
-      if (this.remoteServiceModule) {
-        this.httpClient.setFetcher(this.remoteServiceModule);
+      if (this.internetModule) {
+        this.httpClient.setFetcher(this.internetModule);
       }
 
       const request = new Request(`${this.backendBaseUrl}/api/summarize`, {
@@ -293,7 +292,7 @@ export class VisionOpenAI extends BaseScriptComponent {
   //       }
   //     );
       
-  //     let response = await this.remoteServiceModule.fetch(request);
+  //     let response = await this.internetModule.fetch(request);
   //     print("Endpoint ping status: " + response.status);
       
   //     if (response.status === 200) {
@@ -349,8 +348,8 @@ export class VisionOpenAI extends BaseScriptComponent {
         return;
       }
 
-      if (this.remoteServiceModule) {
-        this.httpClient.setFetcher(this.remoteServiceModule);
+      if (this.internetModule) {
+        this.httpClient.setFetcher(this.internetModule);
       }
 
       const orchestratePayload = {
