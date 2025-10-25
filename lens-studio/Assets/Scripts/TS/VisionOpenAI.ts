@@ -2,7 +2,7 @@ import { Interactable } from "../../SpectaclesInteractionKit/Components/Interact
 import { InteractorEvent } from "../../SpectaclesInteractionKit/Core/Interactor/InteractorEvent";
 import { SIK } from "../../SpectaclesInteractionKit/SIK";
 import { TextToSpeechOpenAI } from "./TextToSpeechOpenAI";
-import { HttpClient } from "./utils/HttpClient";
+import { HttpClient, HttpFetchModule } from "./utils/HttpClient";
 
 // Add location module requirement
 require('LensStudio:RawLocationModule');
@@ -20,7 +20,7 @@ export class VisionOpenAI extends BaseScriptComponent {
   @input chatHistoryText: Text; // Reference to popup1 text element
   @input maxHistoryLength: number = 10; // Maximum number of conversation pairs to store
   
-  // Gemini summary
+  // Claude summary
   @input enableSummary: boolean = true; // Option to enable/disable summaries
   
   // Maximum characters per line for proper text wrapping
@@ -35,7 +35,11 @@ export class VisionOpenAI extends BaseScriptComponent {
   // Chat history storage
   private chatHistory: string[] = [];
 
-  backendBaseUrl: string = "REMOVED-NGROK-URL";
+  @input("string")
+  backendBaseUrl: string = "";
+
+  @input(Component.RemoteServiceModule)
+  remoteServiceModule: HttpFetchModule;
 
   private httpClient = new HttpClient();
 
@@ -63,6 +67,16 @@ export class VisionOpenAI extends BaseScriptComponent {
 
     this.interactable.onInteractorTriggerEnd(onTriggerEndCallback);
     
+    if (!this.backendBaseUrl) {
+      print("Backend base URL is not configured. Set backendBaseUrl on the component.");
+    }
+
+    if (!this.remoteServiceModule) {
+      print("Remote Service module is missing. Assign it in the Inspector.");
+    } else {
+      this.httpClient.setFetcher(this.remoteServiceModule);
+    }
+
     // Initialize location service
     this.initLocationService();
     
@@ -142,90 +156,78 @@ export class VisionOpenAI extends BaseScriptComponent {
     return this.chatHistory.join("\n");
   }
   
-  // Generate summary with Gemini API and add to response
-  async generateBulletSummary(responseText: string): Promise<{fullText: string, summaryOnly: string}> {
+  // Generate summary with Claude API and add to response
+  async generateBulletSummary(responseText: string): Promise<{ fullText: string; summaryOnly: string }> {
     if (!this.enableSummary) {
       print("Summary generation disabled");
-      return {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+      return {
         fullText: responseText,
-        summaryOnly: ""
+        summaryOnly: "",
       };
     }
-    
+
     try {
-      print("Generating bullet-point summary with Gemini...");
-      
-      const prompt = `List down the key points covered from this response in 3-5 concise bullet points:
-"${responseText}"
+      print("Generating bullet-point summary with Claude...");
 
-Format the output as bullet points starting with • and keep each bullet very brief.`;
-      
-      const claudeSummaryPayload = {
-        summaryPrompt: prompt
-      };
+      const prompt = `List the key points from this response in 3-5 concise bullet points.\n${responseText}`;
 
-      const request = new Request(
-        `${this.backendBaseUrl}/api/summarize`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(claudeSummaryPayload),
-        }
-      );
-
-      const response = await this.httpClient.fetch(request);
-      
-      if (response.status === 200) {
-        const responseData = await response.json();
-        
-        // Extract the summary text from Gemini response
-        if (responseData && 
-            responseData.candidates && 
-            responseData.candidates[0] && 
-            responseData.candidates[0].content && 
-            responseData.candidates[0].content.parts && 
-            responseData.candidates[0].content.parts[0] && 
-            responseData.candidates[0].content.parts[0].text) {
-          
-          let summaryText = responseData.candidates[0].content.parts[0].text;
-          
-          // Make sure the summary text is properly formatted for display
-          // Clean up any extra whitespace and ensure proper bullet formatting
-          summaryText = summaryText.trim()
-            .replace(/\n{3,}/g, "\n\n")   // Remove excessive newlines
-            .replace(/[•*-] /g, "• ");     // Standardize bullet points
-          
-          print("Summary generated successfully: " + summaryText);
-          print("Summary length: " + summaryText.length + " characters");
-          
-          // Prepare a clean summary text that's easier to render
-          const cleanSummary = "KEY POINTS:\n\n" + summaryText;
-          
-          return {
-            fullText: `${responseText}\n\n---KEY POINTS---\n${summaryText}`,
-            summaryOnly: cleanSummary
-          };
-        } else {
-          print("Invalid Gemini response format");
-          return {
-            fullText: responseText,
-            summaryOnly: ""
-          };
-        }
-      } else {
-        print("Gemini API call failed with status " + response.status);
+      if (!this.backendBaseUrl) {
+        print("Cannot summarize because backendBaseUrl is missing");
         return {
           fullText: responseText,
-          summaryOnly: ""
+          summaryOnly: "",
         };
       }
+
+      if (this.remoteServiceModule) {
+        this.httpClient.setFetcher(this.remoteServiceModule);
+      }
+
+      const request = new Request(`${this.backendBaseUrl}/api/summarize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ summaryPrompt: prompt }),
+      });
+
+      const response = await this.httpClient.fetch(request);
+
+      if (response.status === 200) {
+        const responseData = await response.json();
+        const summaryText = (responseData && responseData.summary) || "";
+
+        if (!summaryText) {
+          print("Claude summary response missing summary field");
+          return {
+            fullText: responseText,
+            summaryOnly: "",
+          };
+        }
+
+        const normalizedSummary = summaryText
+          .trim()
+          .replace(/\n{3,}/g, "\n\n")
+          .replace(/[•*-] /g, "• ");
+
+        const cleanSummary = "KEY POINTS:\n\n" + normalizedSummary;
+
+        return {
+          fullText: `${responseText}\n\n---KEY POINTS---\n${normalizedSummary}`,
+          summaryOnly: cleanSummary,
+        };
+      }
+
+      print("Claude summary call failed with status " + response.status);
+      return {
+        fullText: responseText,
+        summaryOnly: "",
+      };
     } catch (error) {
       print("Error in generateBulletSummary: " + error);
       return {
         fullText: responseText,
-        summaryOnly: ""
+        summaryOnly: "",
       };
     }
   }
@@ -282,7 +284,7 @@ Format the output as bullet points starting with • and keep each bullet very b
   //   try {
   //     print("Pinging ngrok endpoint...");
       
-  //     const request = new Request(this.python_ngrok_backend,
+  //     const request = new Request(`${this.backendBaseUrl}`,
   //       {
   //         method: "GET",
   //         headers: {
@@ -342,6 +344,15 @@ Format the output as bullet points starting with • and keep each bullet very b
       }
   
       // Prepare payload
+      if (!this.backendBaseUrl) {
+        print("Cannot call orchestrator because backendBaseUrl is missing");
+        return;
+      }
+
+      if (this.remoteServiceModule) {
+        this.httpClient.setFetcher(this.remoteServiceModule);
+      }
+
       const orchestratePayload = {
         user_prompt: userQuery,
         latitude: this.latitude || 0,
@@ -387,7 +398,7 @@ Format the output as bullet points starting with • and keep each bullet very b
           // Store original response for history
           const originalResponse = responseText;
           
-          // Generate summary with Gemini if enabled and append to response
+          // Generate summary with Claude if enabled and append to response
           if (this.enableSummary && responseText) {
             const result = await this.generateBulletSummary(responseText);
             
