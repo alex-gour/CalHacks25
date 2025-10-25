@@ -9,8 +9,16 @@ from app.models.schemas import (
     LocationRequest,
     OrchestrationRequest,
     Shelter,
+    SummaryRequest,
 )
-from app.services.claude import WorkflowPrompt, determine_workflow, get_general_claude_response, send_vision_prompt, web_search
+from app.services.claude import (
+    WorkflowPrompt,
+    determine_workflow,
+    get_general_claude_response,
+    send_vision_prompt,
+    summarize_text,
+    web_search,
+)
 from app.services.medical import get_medical_care_locations
 from app.services.pharmacy import get_easyvax_locations
 from app.services.restroom import get_restroom_data
@@ -211,6 +219,15 @@ async def handle_physical_resource_request(latitude: float, longitude: float, us
         }
     except Exception as e:
         return {"sessionId": session_id, "error": str(e)}
+
+@router.post("/summarize")
+async def summarize(req: SummaryRequest):
+    try:
+        result = await summarize_text(req.summaryPrompt)
+        return {"summary": result}
+    except Exception as e:
+        return {"error": str(e)}
+
 
 @router.post("/orchestrate", response_model=Dict[str, Any])
 async def orchestrate(req: OrchestrationRequest):

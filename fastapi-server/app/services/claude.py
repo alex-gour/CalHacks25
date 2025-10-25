@@ -121,6 +121,23 @@ async def web_search(user_prompt: str, latitude: float, longitude: float) -> str
     return response.content[0].text.strip()
 
 
+def _summary_system_prompt() -> str:
+    return (
+        "Summarize inputs into 3-5 short bullet points."
+        " Use the • character for bullets and keep each point succinct."
+    )
+
+
+async def summarize_text(prompt: str) -> str:
+    response = await anthropic_client.messages.create(
+        model="claude-3-5-sonnet-20240620",
+        max_output_tokens=200,
+        system=_summary_system_prompt(),
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text.strip()
+
+
 async def get_orchestrated_response(
     user_prompt: str,
     workflow_type: WorkflowType,
