@@ -1,0 +1,12 @@
+- !<Scene/d1b15980-985f-4e14-845c-51cd06dcee8b>
+  PackagePath: ""
+  objects:
+    []
+  layers: !<Layers/ca1c267b-f742-4194-80a4-8a3207d3a180>
+    userLayers:
+      []
+    HasOrtho: true
+  RenderOutput: !<reference> 00000000-0000-0000-0000-000000000000
+  RenderPreviewOutput: !<reference> 00000000-0000-0000-0000-000000000000
+  RenderOverlayOutput: !<reference> 00000000-0000-0000-0000-000000000000
+  PhysicsRootWorldSettings: !<reference> 00000000-0000-0000-0000-000000000000
