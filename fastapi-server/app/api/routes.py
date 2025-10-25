@@ -28,7 +28,7 @@ from app.utils.geo import get_zip_from_lat_long, haversine
 router = APIRouter(prefix="/api", tags=["api"])
 
 async def handle_physical_injury(user_prompt: str, image_surroundings: str) -> str:
-    """Handle internal medical problem workflow"""
+    """Handle physical injury workflow with image"""
     session_id = str(uuid.uuid4())
 
     full_prompt = f"""
@@ -44,7 +44,21 @@ async def handle_physical_injury(user_prompt: str, image_surroundings: str) -> s
         response = await send_vision_prompt(full_prompt, image_bytes)
         return response
     except Exception as e:
-        return {"sessionId": session_id, "error ": str(e)}
+        return {"sessionId": session_id, "error": str(e)}
+
+async def handle_physical_injury_no_image(user_prompt: str) -> str:
+    """Handle physical injury workflow without image"""
+    session_id = str(uuid.uuid4())
+    
+    try:
+        # Use the general Claude response for physical injury without image
+        response = await get_general_claude_response(user_prompt, WorkflowPrompt.PHYSICAL)
+        return {
+            "sessionId": session_id,
+            "response": response
+        }
+    except Exception as e:
+        return {"sessionId": session_id, "error": str(e)}
 
 async def handle_internal_medical(user_prompt: str) -> str:
     """Handle internal medical problem workflow"""
@@ -156,11 +170,12 @@ async def handle_restroom_request(latitude: float, longitude: float) -> Dict[str
             }
 
     except Exception as e:
-        return {"sessionId": session_id, "error string 2": str(e)}
+        return {"sessionId": session_id, "error": str(e)}
 
 @router.post("/find_restroom")
 async def find_restroom(req: LocationRequest):
     return await handle_restroom_request(req.latitude, req.longitude)
+
 @router.post("/find_healthcare_facilities")
 async def find_healthcare_facilities(req: LocationRequest):
     return await handle_medical_center_request(req.latitude, req.longitude)
@@ -172,7 +187,7 @@ async def handle_medical_center_request(latitude: float, longitude: float, limit
         facilities = get_medical_care_locations(latitude, longitude, limit)
         
         if isinstance(facilities, dict) and "error" in facilities:
-            return {"sessionId": session_id, "error string 3": facilities["error"]}
+            return {"sessionId": session_id, "error": facilities["error"]}
         
         return {
             "sessionId": session_id,
@@ -186,7 +201,7 @@ async def handle_shelter_request(latitude: float, longitude: float) -> Dict[str,
     session_id = str(uuid.uuid4())  # Generate fresh session UUID
     try:
         if not latitude or not longitude:
-            return {"sessionId": session_id, "error string 4": "Latitude and longitude are required."}
+            return {"sessionId": session_id, "error": "Latitude and longitude are required."}
         
         print(f"Latitude: {latitude}, Longitude: {longitude}")
         zip_code = get_zip_from_lat_long(latitude, longitude)
@@ -201,7 +216,7 @@ async def handle_shelter_request(latitude: float, longitude: float) -> Dict[str,
         }
     
     except Exception as e:
-        return {"sessionId": session_id, "error string 5": str(e)}
+        return {"sessionId": session_id, "error": str(e)}
 
 @router.post("/find_shelter")
 async def find_shelter(req: LocationRequest):
@@ -240,31 +255,52 @@ async def orchestrate(req: OrchestrationRequest):
     Returns:
         Dictionary with response from the most appropriate service
     """
+    print(f"DEBUG: Orchestrate called with prompt: '{req.user_prompt}' - VERSION 2")
     try:
         # Determine the workflow using Gemini
         workflow_type = await determine_workflow(req.user_prompt)
+        print(f"DEBUG: Orchestrate detected workflow type: {workflow_type} for prompt: '{req.user_prompt}'")
         
         # Route to the appropriate service based on workflow type
+        print(f"DEBUG: Routing to workflow {workflow_type}")
         if workflow_type == "A":
-            return await handle_physical_injury(req.user_prompt, req.image_surroundings)
+            print("DEBUG: Handling physical injury workflow")
+            if req.image_surroundings:
+                return await handle_physical_injury(req.user_prompt, req.image_surroundings)
+            else:
+                # Handle physical injury without image
+                return await handle_physical_injury_no_image(req.user_prompt)
         elif workflow_type == "B":
+            print("DEBUG: Handling internal medical workflow")
             return await handle_internal_medical(req.user_prompt)
         elif workflow_type == "C":
+            print("DEBUG: Handling shelter workflow")
             return await handle_shelter_request(req.latitude, req.longitude)
         elif workflow_type == "D":
+            print("DEBUG: Handling pharmacy workflow")
             return await handle_pharmacy_request(req.latitude, req.longitude)
         elif workflow_type == "E":
+            print("DEBUG: Handling medical center workflow")
             return await handle_medical_center_request(req.latitude, req.longitude)
         elif workflow_type == "F":
+            print("DEBUG: Handling restroom workflow")
             return await handle_restroom_request(req.latitude, req.longitude)
         elif workflow_type == "G":
+            print("DEBUG: Handling physical resource workflow")
             return await handle_physical_resource_request(req.latitude, req.longitude, req.user_prompt)
         else:
             raise ValueError(f"Unknown workflow type: {workflow_type}")
             
     except Exception as e:
-        return {"sessionId": str(uuid.uuid4()), "error string 6" : str(e)} 
+        return {"sessionId": str(uuid.uuid4()), "error": str(e)} 
     
 @router.get("/")
 async def root():
     return {"message": "Welcome to the FastAPI server!"}
+
+@router.post("/test_workflow")
+async def test_workflow(request: dict):
+    """Test endpoint to debug workflow detection"""
+    user_prompt = request.get("user_prompt", "")
+    workflow_type = await determine_workflow(user_prompt)
+    return {"user_prompt": user_prompt, "workflow_type": workflow_type}

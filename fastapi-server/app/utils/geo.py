@@ -19,13 +19,18 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeopyError
 import requests
 
-POSITIONSTACK_API_KEY = "YOUR_POSITIONSTACK_API_KEY"  # <<< Replace with your actual API key
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+POSITIONSTACK_API_KEY = os.getenv("POSITIONSTACK_API_KEY", "12bc86edb96acc806a5a4404eeee2988")
 
 def get_zip_from_lat_long(lat: float, lon: float) -> str:
     """Get ZIP code from latitude and longitude using PositionStack API."""
     url = "http://api.positionstack.com/v1/reverse"
     params = {
-        'access_key': "12bc86edb96acc806a5a4404eeee2988",
+        'access_key': POSITIONSTACK_API_KEY,
         'query': f"{lat},{lon}",
         'limit': 1
     }
