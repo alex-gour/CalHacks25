@@ -232,7 +232,7 @@ export class VisionOpenAI extends BaseScriptComponent {
 	// Add a new conversation to the chat history
 	addToHistory(userQuery: string, response: string) {
 		// Create a formatted conversation entry
-		const historyEntry = `User: ${userQuery}\nSnapAid: ${response}\n`
+		const historyEntry = `User: ${userQuery}\nMain: ${response}\n`
 
 		// Add to the history array
 		this.chatHistory.push(historyEntry)

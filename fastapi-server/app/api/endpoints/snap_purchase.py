@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 import base64
 
-from app.services.gemini_detection import get_gemini_service, DetectedProduct
+from app.services.segmentation_service import get_segmentation_service, DetectedProduct
 from app.services.google_search import get_search_service, SearchResult
 from app.services.shopify_purchase import get_purchase_service, PurchaseConfig
 from app.services.product_matcher import get_product_matcher, ProductMatchResult, CatalogProduct
@@ -74,10 +74,10 @@ async def detect_products_in_image(
     # Determine MIME type
     mime_type = image.content_type or 'image/png'
 
-    # Detect products using Gemini
-    gemini_service = get_gemini_service()
+    # Detect products using segmentation
+    segmentation_service = get_segmentation_service()
     try:
-        products = await gemini_service.detect_products(image_bytes, mime_type)
+        products = await segmentation_service.detect_products(image_bytes, mime_type)
 
         return DetectionResponse(
             detected_products=products,
@@ -198,9 +198,9 @@ async def snap_and_buy(request: SnapAndBuyRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid base64 image data: {str(e)}")
 
-    gemini_service = get_gemini_service()
+    segmentation_service = get_segmentation_service()
     try:
-        products = await gemini_service.detect_products(image_bytes, mime_type)
+        products = await segmentation_service.detect_products(image_bytes, mime_type)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Product detection failed: {str(e)}")
 
