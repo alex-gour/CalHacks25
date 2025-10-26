@@ -2733,7 +2733,7 @@
 - !<ScriptComponent/c42ecdd0-2586-433f-958c-9c9e8b5b5af7>
   PrefabRemaps: []
   Name: HandVisual
-  Enabled: false
+  Enabled: true
   ScriptAsset: !<reference> f9b29b39-ec8c-41bd-8b53-769ae9b818b8
   ScriptInputsDefault:
     selectVisual: true

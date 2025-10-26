@@ -7,7 +7,7 @@ model lines up with a public endpoint contract.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, conint, conlist, constr
 
@@ -204,7 +204,7 @@ class BrightDataProduct(BaseModel):
 
 class BrightDataScrapeResponse(BaseModel):
     results: List[BrightDataProduct]
-    raw_response: Optional[Dict[str, Any] | List[Any] | str] = Field(
+    raw_response: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="Raw Bright Data payload kept for debugging (dict, list, or str)",
     )
