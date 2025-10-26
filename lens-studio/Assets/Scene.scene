@@ -566,7 +566,7 @@
 - !<ScriptComponent/1f9563a8-ffa5-4672-a2ad-673860cf3717>
   PrefabRemaps: []
   Name: Map
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> 659a44d1-654b-441b-85d0-d826e3c6c2ab
   ScriptInputsDefault:
     componentPrefab: true
@@ -2527,7 +2527,7 @@
 - !<SceneObject/b47b2b5a-b0be-41dc-8288-187b6a1ffbc0>
   PrefabRemaps: []
   Name: Screen Transform
-  Enabled: true
+  Enabled: false
   Layers: 1048576
   LocalTransform: !<TransformEntity>
     Position: {x: 0.000000, y: 0.000000, z: 0.000000}
@@ -2606,7 +2606,7 @@
 - !<ScriptComponent/bab725a4-c1c6-4e55-933e-e6a927db03f8>
   PrefabRemaps: []
   Name: Map
-  Enabled: true
+  Enabled: false
   ScriptAsset: !<reference> 659a44d1-654b-441b-85d0-d826e3c6c2ab
   ScriptInputsDefault:
     componentPrefab: true
