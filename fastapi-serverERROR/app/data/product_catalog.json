@@ -1,0 +1,51 @@
+[
+  {
+    "id": "generic-water-bottle",
+    "name": "Generic Water Bottle",
+    "category": "water bottle",
+    "keywords": [
+      "water bottle",
+      "bottle",
+      "plastic",
+      "reusable"
+    ],
+    "shopify_url": "https://saicstore.myshopify.com/products/saic-water-bottle",
+    "description": "Standard reusable water bottle",
+    "attributes": {
+      "material": "plastic"
+    }
+  },
+  {
+    "id": "shampoo-bottle",
+    "name": "Premium Shampoo Bottle",
+    "category": "shampoo",
+    "keywords": [
+      "shampoo",
+      "hair care",
+      "bottle",
+      "pump"
+    ],
+    "shopify_url": "https://example-store.myshopify.com/products/premium-shampoo",
+    "description": "Hair care shampoo with pump dispenser",
+    "attributes": {
+      "type": "hair care",
+      "dispenser": "pump"
+    }
+  },
+  {
+    "id": "toothpaste-tube",
+    "name": "Toothpaste Tube",
+    "category": "toothpaste",
+    "keywords": [
+      "toothpaste",
+      "dental",
+      "tube",
+      "oral care"
+    ],
+    "shopify_url": "https://example-store.myshopify.com/products/toothpaste",
+    "description": "Standard toothpaste tube",
+    "attributes": {
+      "type": "oral care"
+    }
+  }
+]

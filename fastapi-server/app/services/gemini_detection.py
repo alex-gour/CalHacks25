@@ -102,6 +102,8 @@ IF NO FILLABLE CONTAINERS ARE DETECTED: Return an empty JSON array [] in the req
 """
 
         try:
+            print(f"[DEBUG] Sending image to Gemini: {len(image_bytes)} bytes, mime_type={mime_type}")
+
             response = self.client.models.generate_content(
                 model=self.model,
                 contents=[
@@ -119,21 +121,28 @@ IF NO FILLABLE CONTAINERS ARE DETECTED: Return an empty JSON array [] in the req
 
             # Parse the response - extract JSON from markdown code block
             text = response.text.strip()
+            print(f"[DEBUG] Gemini raw response: {text[:500]}...")  # First 500 chars
+
             if text.startswith('```json'):
                 text = text[7:]  # Remove ```json
             if text.endswith('```'):
                 text = text[:-3]  # Remove ```
             text = text.strip()
 
+            print(f"[DEBUG] Gemini cleaned JSON: {text}")
+
             # Parse JSON
             products_data = json.loads(text)
+            print(f"[DEBUG] Parsed {len(products_data)} products from Gemini")
 
             # Convert to DetectedProduct objects
             products = [DetectedProduct(**p) for p in products_data]
             return products
 
         except Exception as e:
-            print(f"Error detecting products with Gemini: {e}")
+            print(f"[ERROR] Error detecting products with Gemini: {e}")
+            import traceback
+            traceback.print_exc()
             raise
 
 
