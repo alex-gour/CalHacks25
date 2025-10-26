@@ -1,0 +1,196 @@
+- !<ObjectPrefab/b9c1ca01-714d-40ba-b451-0b7b591a418e>
+  PackagePath: ""
+  objects:
+    - !<own> 2c50c25e-0257-46c0-9c67-3f910cd6d7d1
+  LazyLoading: false
+  RetainAssets: true
+- !<ScreenTransform/1cf7f5e7-cd6e-44a0-808e-afd4fbcf1a88>
+  PrefabRemaps:
+    []
+  Name: Screen Transform
+  Enabled: true
+  IsAdvanced: false
+  Constraints:
+    pinToLeft: false
+    pinToTop: false
+    pinToRight: false
+    pinToBottom: false
+    fixedWidth: false
+    fixedHeight: false
+    deactivatedFixedSprite: false
+    deactivatedFixedPivot: false
+  Pivot: {x: 0.000000, y: 0.000000}
+  Transform:
+    position: {x: 0.000000, y: 0.000000, z: -1.000000}
+    rotation: {x: 0.000000, y: -0.000000, z: 0.000000}
+    scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    hasSegmentScaleCompensation: false
+  RawMode: true
+  ForceBasic: true
+  Anchor:
+    left: -1.000000
+    bottom: -1.000000
+    right: 1.000000
+    top: 1.000000
+  Offset:
+    left: 0.000000
+    bottom: 0.000000
+    right: 0.000000
+    top: 0.000000
+- !<SceneObject/21f79877-168f-4ef6-992d-35c9e84ec537>
+  PrefabRemaps:
+    []
+  Name: Thumb_up
+  Enabled: true
+  Layers: 1048576
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.254539, y: -0.759090, z: -80.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    - !<own> 8e662112-fbea-4b52-a69b-ac86ccaa6f3e
+    - !<own> fd5266a0-1494-44cc-8ed6-0e94b46fb5ca
+    - !<own> 398c390a-c17e-4042-9bc4-a5a81180a9cf
+- !<SceneObject/2c50c25e-0257-46c0-9c67-3f910cd6d7d1>
+  PrefabRemaps:
+    - 1cf7f5e7-cd6e-44a0-808e-afd4fbcf1a88: 1cf7f5e7-cd6e-44a0-7f71-502b0430e577
+    - 21f79877-168f-4ef6-992d-35c9e84ec537: 21f79877-168f-4ef6-66d2-ca3617b13ac8
+    - 2c50c25e-0257-46c0-9c67-3f910cd6d7d1: 2c50c25e-0257-46c0-6398-c06ef329282e
+    - 398c390a-c17e-4042-9bc4-a5a81180a9cf: 398c390a-c17e-4042-643b-5a57ee7f5630
+    - 59094697-9379-4e43-88e2-267bbe38674f: 59094697-9379-4e43-771d-d98441c798b0
+    - 8e662112-fbea-4b52-a69b-ac86ccaa6f3e: 8e662112-fbea-4b52-5964-5379335590c1
+    - fd5266a0-1494-44cc-8ed6-0e94b46fb5ca: fd5266a0-1494-44cc-7129-f16b4b904a35
+  Name: Hint - Hand Thumb up
+  Enabled: true
+  Layers: 1048576
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 0.000000, z: -1.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    - !<own> 21f79877-168f-4ef6-992d-35c9e84ec537
+  Components:
+    - !<own> 59094697-9379-4e43-88e2-267bbe38674f
+    - !<own> 1cf7f5e7-cd6e-44a0-808e-afd4fbcf1a88
+- !<Image/398c390a-c17e-4042-9bc4-a5a81180a9cf>
+  PrefabRemaps:
+    []
+  Name: Image
+  Enabled: true
+  RenderOrder: 37
+  StretchMode: Fit
+  VerticalAlignment: Center
+  HorizontalAlignment: Center
+  MeshShadowMode: None
+  ShadowColor: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
+  ShadowDensity: 1.000000
+  Materials:
+    - !<reference> ac7f0ed7-5455-4f23-9791-4ba46c3cefa7
+  FlipX: false
+  FlipY: false
+  RotationAngle: 0
+  Pivot: {x: 0.000000, y: 0.000000}
+  ExtentsTarget: !<reference> 00000000-0000-0000-0000-000000000000
+- !<ScreenRegionComponent/59094697-9379-4e43-88e2-267bbe38674f>
+  PrefabRemaps:
+    []
+  Name: Screen Region
+  Enabled: true
+  ScreenRegionType: FullFrame
+  ResizeWithKeyboard: false
+- !<ScreenTransform/8e662112-fbea-4b52-a69b-ac86ccaa6f3e>
+  PrefabRemaps:
+    []
+  Name: Screen Transform
+  Enabled: true
+  IsAdvanced: false
+  Constraints:
+    pinToLeft: false
+    pinToTop: false
+    pinToRight: false
+    pinToBottom: false
+    fixedWidth: false
+    fixedHeight: false
+    deactivatedFixedSprite: false
+    deactivatedFixedPivot: false
+  Pivot: {x: 0.000000, y: 0.000000}
+  Transform:
+    position: {x: 0.254539, y: -0.759090, z: -80.000000}
+    rotation: {x: 0.000000, y: -0.000000, z: 0.000000}
+    scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    hasSegmentScaleCompensation: false
+  RawMode: true
+  ForceBasic: true
+  Anchor:
+    left: -0.183699
+    bottom: -0.122700
+    right: 0.183699
+    top: 0.122700
+  Offset:
+    left: 0.000000
+    bottom: 0.000000
+    right: 0.000000
+    top: 0.000000
+- !<ScriptComponent/fd5266a0-1494-44cc-8ed6-0e94b46fb5ca>
+  PrefabRemaps:
+    []
+  Name: VisualDemonstration
+  Enabled: true
+  ScriptAsset: !<reference> f705ac27-bd04-41fe-8cf3-6d3f651318bf
+  ScriptInputsDefault:
+    autostart: true
+    showType: true
+    appearDelay: true
+    repeatCount: true
+    advanced: true
+    disableHiding: true
+    hideOnCapture: true
+    hideOnCameraSwitch: true
+    eventCallbacks: true
+    callbackType: true
+    onVisualDemonstrationStartBehaviors: true
+    onVisualDemonstrationFinishBehaviors: true
+    onVisualDemonstrationStartCustomTriggers: true
+    onVisualDemonstrationFinishCustomTriggers: true
+    customFunctionScript: true
+    onVisualDemonstrationStartFunctions: true
+    onVisualDemonstrationFinishFunctions: true
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      autostart: true
+      visualDemonstration: !<reference.BaseMeshVisual> 398c390a-c17e-4042-9bc4-a5a81180a9cf
+      showType: 2
+      appearDelay: !<float> 0.000000
+      appearDuration: !<float> 0.000000
+      screenDuration: 4.100000
+      disappearDuration: 0.300000
+      repeatCount: 3
+      advanced: false
+      disableHiding: false
+      showOnce: true
+      hideOnCapture: true
+      hideOnCameraSwitch: true
+      eventCallbacks: false
+      callbackType: 0
+      onVisualDemonstrationStartBehaviors: !<reference.ScriptComponent[]>
+        []
+      onVisualDemonstrationFinishBehaviors: !<reference.ScriptComponent[]>
+        []
+      onVisualDemonstrationStartCustomTriggers: !<string[]>
+        []
+      onVisualDemonstrationFinishCustomTriggers: !<string[]>
+        []
+      customFunctionScript: !<reference.ScriptComponent> 00000000-0000-0000-0000-000000000000
+      onVisualDemonstrationStartFunctions: !<string[]>
+        []
+      onVisualDemonstrationFinishFunctions: !<string[]>
+        []
+  ScriptTypes:
+    "":
+      {}
