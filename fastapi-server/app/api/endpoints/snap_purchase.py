@@ -1,8 +1,11 @@
 """Snap and purchase endpoint - orchestrates image detection, search, and purchase."""
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, Query
+import base64
+import binascii
+
+from fastapi import APIRouter, File, UploadFile, HTTPException, Query, Request
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.services.gemini_detection import get_gemini_service, DetectedProduct
 from app.services.google_search import get_search_service, SearchResult
@@ -43,6 +46,18 @@ class SnapPurchaseResponse(BaseModel):
     catalog_match: Optional[dict] = None  # When using database mode
     purchase_url: Optional[str]
     purchase_result: Optional[dict]
+
+
+class SnapAndBuyPayload(BaseModel):
+    """JSON payload variant for snap and buy flow."""
+    image_surroundings: str
+    user_prompt: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    chat_history: Optional[str] = None
+    auto_purchase: bool = False
+    quantity: str = "1"
+    database: bool = False
 
 
 @router.post("/detect", response_model=DetectionResponse)
@@ -145,61 +160,109 @@ async def purchase_shopify_product(
 
 
 @router.post("/snap-and-buy", response_model=SnapPurchaseResponse)
-async def snap_and_buy(
-    image: UploadFile = File(..., description="Image file to detect products in"),
-    auto_purchase: bool = Query(False, description="Automatically purchase the first detected low-stock product"),
-    quantity: str = Query("1", description="Quantity to purchase"),
-    database: bool = Query(False, description="Use prepopulated product catalog instead of Google Search")
-):
+async def snap_and_buy(request: Request):
     """
     Complete flow: Detect products in image, search for Shopify URLs, and optionally purchase.
 
-    This endpoint orchestrates the complete workflow:
-    1. Detect products in the uploaded image using Gemini
-    2. For the first low-stock product:
-       - If database=True: Match against prepopulated product catalog
-       - If database=False: Search for Shopify URLs using Google Search
-    3. If auto_purchase is True, initiate purchase of the found product
-
-    If auto_purchase is False, this endpoint only performs detection and search/matching,
-    returning the URLs for manual review.
+    Supports both multipart/form-data uploads and JSON payloads containing
+    a base64 encoded image (for clients that cannot send multipart requests).
     """
-    # Step 1: Detect products
-    image_bytes = await image.read()
-    mime_type = image.content_type or 'image/png'
 
+    # Step 0: Normalise request input (multipart vs JSON)
+    image_bytes: Optional[bytes] = None
+    mime_type: str = "image/png"
+    auto_purchase = False
+    quantity = "1"
+    database = False
+
+    content_type = request.headers.get("content-type", "")
+
+    if content_type.startswith("multipart/form-data"):
+        try:
+            form = await request.form()
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to parse multipart form data: {exc}",
+            )
+
+        upload = form.get("image")
+        if isinstance(upload, UploadFile):
+            mime_type = upload.content_type or mime_type
+            image_bytes = await upload.read()
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Multipart request must include an 'image' file field",
+            )
+
+        auto_purchase = form.get("auto_purchase", "false") in {"true", "1", True}
+        if form.get("quantity"):
+            quantity = str(form.get("quantity"))
+        database = form.get("database", "false") in {"true", "1", True}
+
+    else:
+        try:
+            payload_dict = await request.json()
+            payload = SnapAndBuyPayload(**payload_dict)
+        except (ValidationError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON payload. {exc}",
+            )
+
+        if not payload.image_surroundings:
+            raise HTTPException(
+                status_code=400,
+                detail="image_surroundings is required in JSON payload",
+            )
+
+        try:
+            image_bytes = base64.b64decode(payload.image_surroundings)
+        except (binascii.Error, ValueError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid base64 image data: {exc}",
+            )
+
+        auto_purchase = payload.auto_purchase
+        quantity = payload.quantity
+        database = payload.database
+
+    if not image_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="No image provided. Upload an image file or include image_surroundings in the JSON body.",
+        )
+
+    # Step 1: Detect products
     gemini_service = get_gemini_service()
     try:
         products = await gemini_service.detect_products(image_bytes, mime_type)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Product detection failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Product detection failed: {str(e)}"
+        )
 
     if not products:
         return SnapPurchaseResponse(
             detected_products=[],
             search_results=[],
             purchase_url=None,
-            purchase_result=None
+            purchase_result=None,
         )
 
     # Step 2: Find a low-stock product to search for
-    target_product = None
-    for product in products:
-        if product.is_low:
-            target_product = product
-            break
-
-    # If no low-stock products, use the first one
+    target_product = next((product for product in products if product.is_low), None)
     if not target_product:
         target_product = products[0]
 
     # Step 2a: Either match against database or search Google
-    search_results = []
+    search_results: List[SearchResult] = []
     catalog_match = None
     best_url = None
 
     if database:
-        # Use prepopulated catalog
         matcher = get_product_matcher()
         try:
             match_result = matcher.match_product(target_product.label)
@@ -210,10 +273,9 @@ async def snap_and_buy(
                     "detected_label": match_result.detected_label,
                     "matched_product": match_result.matched_product.dict(),
                     "confidence": match_result.confidence,
-                    "match_reason": match_result.match_reason
+                    "match_reason": match_result.match_reason,
                 }
             else:
-                # No match found in catalog
                 return SnapPurchaseResponse(
                     detected_products=products,
                     search_results=[],
@@ -221,27 +283,31 @@ async def snap_and_buy(
                         "detected_label": match_result.detected_label,
                         "matched_product": None,
                         "confidence": match_result.confidence,
-                        "match_reason": match_result.match_reason
+                        "match_reason": match_result.match_reason,
                     },
                     purchase_url=None,
                     purchase_result={
                         "success": False,
-                        "message": f"No matching product found in catalog. Reason: {match_result.match_reason}",
-                        "catalog_attempted": True
-                    }
+                        "message": "No matching product found in catalog.",
+                        "catalog_attempted": True,
+                    },
                 )
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Catalog matching failed: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Catalog matching failed: {str(e)}"
+            )
     else:
-        # Use Google Search
         search_service = get_search_service()
         try:
-            search_results = await search_service.search_shopify_product(target_product.label, max_results=10)
+            search_results = await search_service.search_shopify_product(
+                target_product.label, max_results=10
+            )
             best_url = await search_service.find_best_shopify_url(target_product.label)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Product search failed: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Product search failed: {str(e)}"
+            )
 
-        # If no product URL found, return early without purchase
         if not best_url or "/products/" not in best_url:
             return SnapPurchaseResponse(
                 detected_products=products,
@@ -250,13 +316,15 @@ async def snap_and_buy(
                 purchase_url=best_url,
                 purchase_result={
                     "success": False,
-                    "message": "No valid product URL found. Only collection or non-product pages were found.",
-                    "search_attempted": True
-                } if best_url else {
+                    "message": "No valid product URL found.",
+                    "search_attempted": True,
+                }
+                if best_url
+                else {
                     "success": False,
                     "message": "No search results found for the product.",
-                    "search_attempted": True
-                }
+                    "search_attempted": True,
+                },
             )
 
     # Step 3: Optionally purchase
@@ -267,7 +335,7 @@ async def snap_and_buy(
             config = PurchaseConfig(
                 product_url=best_url,
                 quantity=quantity,
-                **purchase_service.default_config
+                **purchase_service.default_config,
             )
             purchase_result = await purchase_service.purchase_product(best_url, config)
         except Exception as e:
@@ -278,5 +346,5 @@ async def snap_and_buy(
         search_results=search_results,
         catalog_match=catalog_match,
         purchase_url=best_url,
-        purchase_result=purchase_result
+        purchase_result=purchase_result,
     )

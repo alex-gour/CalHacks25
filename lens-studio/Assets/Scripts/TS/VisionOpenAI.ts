@@ -4,7 +4,7 @@ import {Interactable} from '../../SpectaclesInteractionKit/Components/Interactio
 import {InteractorEvent} from '../../SpectaclesInteractionKit/Core/Interactor/InteractorEvent'
 import {SIK} from '../../SpectaclesInteractionKit/SIK'
 import {TextToSpeechOpenAI} from './TextToSpeechOpenAI'
-import {HttpClient, HttpFetchModule} from './utils/HttpClient'
+import {HttpFetchModule} from './utils/HttpClient'
 
 // Add location module requirement
 try {
@@ -12,6 +12,44 @@ try {
 } catch (error) {
 	print('Warning: RawLocationModule not available: ' + error)
 }
+
+type SnapPurchaseProduct = {
+	detected_label?: string
+	matched_product?: {
+		id: string
+		name: string
+		category: string
+		shopify_url: string
+		[key: string]: unknown
+	} | null
+	confidence?: number
+	match_reason?: string
+}
+
+type SnapPurchaseResult = {
+	detected_products: Array<{
+		label: string
+		percent_full?: number
+		is_low?: boolean
+		confidence?: number
+		box_2d?: number[]
+	}>
+	search_results?: Array<{
+		title?: string
+		url?: string
+		snippet?: string
+	}>
+	catalog_match?: SnapPurchaseProduct | null
+	purchase_url?: string | null
+	purchase_result?: {
+		success?: boolean
+		message?: string
+		product_url?: string
+		cart_url?: string
+		[key: string]: unknown
+	} | null
+}
+
 
 @component
 export class VisionOpenAI extends BaseScriptComponent {
@@ -42,13 +80,20 @@ export class VisionOpenAI extends BaseScriptComponent {
 	private chatHistory: string[] = []
 
 	@input('string')
-	backendBaseUrl: string = 'http://localhost:8000'
+	backendBaseUrl: string = 'https://resorbent-alanna-semimoderately.ngrok-free.dev'
 
-	internetModule?: HttpFetchModule
-
-	private httpClient = new HttpClient()
+	private fetchModule: HttpFetchModule | null = null
 
 	private isProcessing: boolean = false
+
+	private resolvedBaseUrl: string | null = null
+
+	// Hard-coded Snap & Buy behaviour: always auto-purchase using catalog data
+	private readonly snapPurchaseOptions = {
+		autoPurchase: true,
+		useCatalog: true,
+		quantity: '1',
+	} as const
 
 	onAwake() {
 		try {
@@ -66,9 +111,55 @@ export class VisionOpenAI extends BaseScriptComponent {
 		}
 	}
 
+	private getBackendUrl(): string {
+		if (this.resolvedBaseUrl) {
+			return this.resolvedBaseUrl
+		}
+
+		let candidate = (this.backendBaseUrl || '').trim()
+		if (!candidate) {
+			candidate = 'https://resorbent-alanna-semimoderately.ngrok-free.dev'
+		}
+
+		if (!candidate.startsWith('http')) {
+			candidate = 'https://' + candidate
+		}
+
+		if (candidate.startsWith('http://')) {
+			print('Upgrading backendBaseUrl to https for ngrok usage')
+			candidate = 'https://' + candidate.substring(7)
+		}
+
+		if (candidate.endsWith('/')) {
+			candidate = candidate.substring(0, candidate.length - 1)
+		}
+
+		this.resolvedBaseUrl = candidate
+		return this.resolvedBaseUrl
+	}
+
+	private ensureFetchModule(): HttpFetchModule {
+		if (this.fetchModule) {
+			return this.fetchModule
+		}
+
+		try {
+			this.fetchModule = require('LensStudio:InternetModule') as HttpFetchModule
+		} catch (internetError) {
+			print('InternetModule not available, trying RemoteServiceModule: ' + internetError)
+			this.fetchModule = require('LensStudio:RemoteServiceModule') as HttpFetchModule
+		}
+
+		if (!this.fetchModule) {
+			throw new Error('No fetch-capable module available. Please add an Internet Module to the project.')
+		}
+
+		return this.fetchModule
+	}
+
 	onStart() {
 		try {
-			let interactionManager = SIK.InteractionManager
+			//let interactionManager = SIK.InteractionManager
 
 			// Define the desired callback logic for the relevant Interactable event.
 			let onTriggerEndCallback = (event: InteractorEvent) => {
@@ -81,19 +172,14 @@ export class VisionOpenAI extends BaseScriptComponent {
 				print('Warning: Interactable component not assigned')
 			}
 
-			if (!this.backendBaseUrl) {
+			const backendUrl = this.getBackendUrl()
+			if (!backendUrl) {
 				print(
 					'Backend base URL is not configured. Set backendBaseUrl on the component.'
 				)
 			}
 
-			if (this.internetModule) {
-				this.httpClient.setFetcher(this.internetModule)
-			} else {
-				print(
-					'Internet Module is missing. Assign it in the Inspector or rely on global fetch fallback.'
-				)
-			}
+			this.ensureFetchModule()
 
 			// Initialize location service
 			this.initLocationService()
@@ -162,6 +248,70 @@ export class VisionOpenAI extends BaseScriptComponent {
 		this.updateChatHistoryDisplay()
 	}
 
+	private formatSnapAndBuyResponse(result: SnapPurchaseResult | null): string {
+		if (!result) {
+			return 'No response received from Snap & Buy backend.'
+		}
+
+		const lines: string[] = []
+
+		if (result.detected_products && result.detected_products.length > 0) {
+			const topProduct = result.detected_products[0]
+			lines.push(`Detected: ${topProduct.label || 'unknown product'}`)
+			if (topProduct.percent_full !== undefined) {
+				lines.push(
+					`Fill level: ${Math.round(topProduct.percent_full)}% (${topProduct.is_low ? 'low' : 'ok'})`
+				)
+			}
+		} else {
+			lines.push('No products detected in the scene.')
+		}
+
+		if (result.catalog_match) {
+			const match = result.catalog_match
+			if (match.matched_product) {
+				lines.push(
+					`Catalog match: ${match.matched_product.name} (confidence ${Math.round(
+						(match.confidence || 0) * 100
+					)}%)`
+				)
+				lines.push(`Shopify URL: ${match.matched_product.shopify_url}`)
+			} else if (match.match_reason) {
+				lines.push(`Catalog attempt failed: ${match.match_reason}`)
+			}
+		}
+
+		if (result.search_results && result.search_results.length > 0) {
+			const bestSearch = result.search_results[0]
+			lines.push(`Top search result: ${bestSearch.title || bestSearch.url}`)
+			if (bestSearch.url) {
+				lines.push(`URL: ${bestSearch.url}`)
+			}
+		}
+
+		if (result.purchase_url) {
+			lines.push(`Purchase URL: ${result.purchase_url}`)
+		}
+
+		if (result.purchase_result) {
+			const purchase = result.purchase_result
+			const status = purchase.success ? '✅ Purchase initiated' : '⚠️ Purchase not completed'
+			lines.push(status)
+			if (purchase.message) {
+				lines.push(`Details: ${purchase.message}`)
+			}
+			if (purchase.cart_url) {
+				lines.push(`Cart: ${purchase.cart_url}`)
+			}
+		}
+
+		if (lines.length === 0) {
+			lines.push('Snap & Buy response contained no actionable data.')
+		}
+
+		return lines.join('\n')
+	}
+
 	// Update the chat history display in the popup1 text element
 	updateChatHistoryDisplay() {
 		if (!this.chatHistoryText) {
@@ -196,19 +346,11 @@ export class VisionOpenAI extends BaseScriptComponent {
 
 			const prompt = `List the key points from this response in 3-5 concise bullet points.\n${responseText}`
 
-			if (!this.backendBaseUrl) {
-				print('Cannot summarize because backendBaseUrl is missing')
-				return {
-					fullText: responseText,
-					summaryOnly: '',
-				}
-			}
+			const backendUrl = this.getBackendUrl()
 
-			if (this.internetModule) {
-				this.httpClient.setFetcher(this.internetModule)
-			}
+			const fetchModule = this.ensureFetchModule()
 
-			const request = new Request(`${this.backendBaseUrl}/api/summarize`, {
+			const request = new Request(`${backendUrl}/api/summarize`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -216,7 +358,7 @@ export class VisionOpenAI extends BaseScriptComponent {
 				body: JSON.stringify({summaryPrompt: prompt}),
 			})
 
-			const response = await this.httpClient.fetch(request)
+			const response = await fetchModule.fetch(request)
 
 			if (response.status === 200) {
 				const responseData = await response.json()
@@ -329,7 +471,7 @@ export class VisionOpenAI extends BaseScriptComponent {
 	//       }
 	//     );
 
-	//     let response = await this.internetModule.fetch(request);
+	//     let response = await this.remoteServiceModule.fetch(request);
 	//     print("Endpoint ping status: " + response.status);
 
 	//     if (response.status === 200) {
@@ -380,137 +522,103 @@ export class VisionOpenAI extends BaseScriptComponent {
 				}
 			}
 
-			// Prepare payload
-			if (!this.backendBaseUrl) {
-				print('Cannot call orchestrator because backendBaseUrl is missing')
+			const backendUrl = this.getBackendUrl()
+			if (!backendUrl) {
+				print('Cannot call snap-and-buy because backend base URL is missing')
 				return
 			}
 
-			if (this.internetModule) {
-				this.httpClient.setFetcher(this.internetModule)
+			if (!base64Image) {
+				const warning =
+					'No camera frame captured. Make sure an image component is wired before snapping.'
+				print(warning)
+				if (this.LLM_analyse) {
+					this.LLM_analyse.text = this.makeTextWrappable(warning)
+				}
+				this.isProcessing = false
+				return
 			}
 
-			const orchestratePayload = {
+			const fetchModule = this.ensureFetchModule()
+
+			const snapAndBuyPayload = {
 				user_prompt: userQuery,
 				latitude: this.latitude || 0,
 				longitude: this.longitude || 0,
 				image_surroundings: base64Image,
-				chat_history: this.getChatHistoryString(), // Include chat history in the request
+				chat_history: this.getChatHistoryString(),
+				auto_purchase: this.snapPurchaseOptions.autoPurchase,
+				database: this.snapPurchaseOptions.useCatalog,
+				quantity: this.snapPurchaseOptions.quantity,
 			}
 
-			const fullUrl = `${this.backendBaseUrl}/api/orchestrate`
+			const fullUrl = `${backendUrl}/api/snap-purchase/snap-and-buy`
+			print('Snap & Buy options locked to auto purchase + catalog + quantity 1')
 
 			const request = new Request(fullUrl, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify(orchestratePayload),
+				body: JSON.stringify(snapAndBuyPayload),
 			})
 			print('Posting to URL: ' + fullUrl)
-			let response = await this.httpClient.fetch(request)
+			const response = await fetchModule.fetch(request)
 
 			if (response.status === 200) {
-				let responseData
-				let responseText = ''
+				let responseData: SnapPurchaseResult | null = null
+				let responseDisplay = ''
 
 				try {
-					// Parse the JSON response first
-					responseData = await response.json()
-					print('Parsed JSON response successfully')
+					responseData = (await response.json()) as SnapPurchaseResult
+					print('Parsed snap-and-buy response successfully')
 
-					// Get response text from either response property or full object
-					if (
-						responseData &&
-						typeof responseData === 'object' &&
-						responseData.response !== undefined
-					) {
-						print("Found 'response' property in parsed JSON")
-						responseText = responseData.response
-					} else {
-						// Use the entire responseData object as the response text
-						print("No 'response' property found, using entire JSON")
-						responseText =
-							typeof responseData === 'string'
-								? responseData
-								: JSON.stringify(responseData)
-					}
+					responseDisplay = this.formatSnapAndBuyResponse(responseData)
 
-					// Store original response for history
-					const originalResponse = responseText
+					if (this.enableSummary && responseDisplay) {
+						const result = await this.generateBulletSummary(responseDisplay)
 
-					// Generate summary with Claude if enabled and append to response
-					if (this.enableSummary && responseText) {
-						const result = await this.generateBulletSummary(responseText)
-
-						// Show ONLY the key points in textOutput with improved rendering
 						if (result.summaryOnly) {
-							// Ensure text is properly formatted for display
 							const displayText = result.summaryOnly
 							if (this.textOutput) {
 								this.textOutput.text = this.makeTextWrappable(displayText)
 							}
-
-							// Debug log
 							print(
 								'Setting textOutput with summary, length: ' + displayText.length
 							)
-
-							// Add to history using the summary instead of full response
 							this.addToHistory(userQuery, displayText)
 						} else {
-							// Fallback if summary generation failed
 							if (this.textOutput) {
-								this.textOutput.text = this.makeTextWrappable(responseText)
+								this.textOutput.text = this.makeTextWrappable(responseDisplay)
 							}
-
-							// Use original text for history when summary fails
-							this.addToHistory(userQuery, responseText)
+							this.addToHistory(userQuery, responseDisplay)
 						}
 					} else {
-						// No summary - just show response in textOutput
 						if (this.textOutput) {
-							this.textOutput.text = responseText
+							this.textOutput.text = responseDisplay
 						}
-
-						// Add to history using the original response
-						this.addToHistory(userQuery, responseText)
+						this.addToHistory(userQuery, responseDisplay)
 					}
 
-					print('Response from orchestrate: ' + responseText)
+					print('Snap-and-buy response: ' + responseDisplay)
 				} catch (jsonError) {
-					print('Error parsing JSON: ' + jsonError)
-					let errorText = 'Error parsing response: ' + jsonError
+					print('Error parsing snap-and-buy JSON: ' + jsonError)
+					const errorText = 'Error parsing response: ' + jsonError
 					if (this.textOutput) {
 						this.textOutput.text = this.makeTextWrappable(errorText)
 					}
 				}
 
-				// Clear analysis field after response is received
 				if (this.LLM_analyse) {
 					this.LLM_analyse.text = ''
 				}
 
-				// Optionally, TTS
-				if (this.ttsComponent) {
-					// Use responseText if available, otherwise try to access responseData.response
-					let textToSpeak = ''
-					if (
-						responseData &&
-						typeof responseData === 'object' &&
-						responseData.response
-					) {
-						textToSpeak = responseData.response
-					} else if (typeof responseData === 'string') {
-						textToSpeak = responseData
-					} else {
-						textToSpeak = JSON.stringify(responseData)
-					}
-					this.ttsComponent.generateAndPlaySpeech(textToSpeak)
+				if (this.ttsComponent && responseDisplay) {
+					this.ttsComponent.generateAndPlaySpeech(responseDisplay)
 				}
 			} else {
 				print(
-					'Failure: Orchestrate API call failed with status ' + response.status
+					'Failure: Snap-and-buy API call failed with status ' + response.status
 				)
 				if (this.LLM_analyse) {
 					const errorText = `❌ Error (HTTP ${response.status})\n\nBackend request failed.`
